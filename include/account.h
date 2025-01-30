@@ -5,9 +5,13 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
-struct account {
-    char *username;
+#define MAX_USER 50
+
+struct account
+{
+    char  username[MAX_USER];
     char *password;
+    int   uid;
 };
 
-#endif //ACCOUNT_H
+#endif    // ACCOUNT_H
