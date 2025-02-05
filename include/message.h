@@ -35,5 +35,15 @@ typedef enum {
     GENERALIZEDTIME = 24,
 } Tag;
 
+typedef enum {
+    SYS_SUCCESS = 0,
+    SYS_ERROR = 1,
+    ACC_LOGIN = 10,
+    ACC_LOGIN_SUCCESS = 11,
+    ACC_LOGOUT = 12,
+    ACC_CREATE = 13,
+    ACC_EDIT = 14
+} PacketType;
+
 
 #endif //MESSAGE_H
