@@ -23,5 +23,17 @@ struct ACC_Create {
     uint32_t password;
 };
 
+enum {
+    BOOLEAN = 1,
+    INTEGER = 2,
+    NULL = 5,
+    ENUMERATED = 10,
+    UTF8STRING = 12,
+    SEQUENCE = 16,
+    PRINTABLESTRING = 19,
+    UTCTIME = 23,
+    GENERALIZEDTIME = 24,
+} Tag;
+
 
 #endif //MESSAGE_H
