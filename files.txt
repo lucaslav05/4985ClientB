@@ -1,1 +1,1 @@
-client src/client.c include/account.h
+client src/client.c include/account.h include/message.h
