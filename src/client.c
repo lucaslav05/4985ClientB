@@ -15,6 +15,8 @@
 
 #define PORT 8080
 
+// #define P_BUFMAX 65541
+
 int main(void)
 {
     int sockfd;
