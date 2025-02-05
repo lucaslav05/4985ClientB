@@ -7,7 +7,8 @@
 
 #define MAX_USER 50
 
-struct account {
+struct account
+{
     char  username[MAX_USER];
     char *password;
     int   uid;

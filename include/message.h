@@ -23,10 +23,10 @@ struct ACC_Create {
     uint32_t password;
 };
 
-enum {
+typedef enum {
     BOOLEAN = 1,
     INTEGER = 2,
-    NULL = 5,
+    NULL_VAL = 5,
     ENUMERATED = 10,
     UTF8STRING = 12,
     SEQUENCE = 16,

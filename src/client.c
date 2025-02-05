@@ -3,6 +3,7 @@
 //
 
 #include "account.h"
+#include "message.h"
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -17,28 +18,22 @@
 
 // #define P_BUFMAX 65541
 
+void send_acc_login(void);
+void send_acc_create(void);
+void setup_socket(int *sockfd);
+
 int main(void)
 {
-    int sockfd;
-
+    int                sockfd;
     struct sockaddr_in serveraddr;
     struct account     client;
+
+    setup_socket(&sockfd);
 
     printf("Enter username: ");
     scanf("%49s", client.username);
 
     client.password = getpass("Enter password: ");
-
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if(sockfd == -1)
-    {
-        printf("socket creation failed...\n");
-        exit(0);
-    }
-    else
-    {
-        printf("socket successfully created..\n");
-    }
 
     memset(&serveraddr, 0, sizeof(serveraddr));
 
@@ -60,4 +55,26 @@ int main(void)
     }
 
     close(sockfd);
+}
+
+void setup_socket(int *sockfd)
+{
+    *sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if(*sockfd == -1)
+    {
+        printf("socket creation failed...\n");
+        exit(0);
+    }
+    else
+    {
+        printf("socket successfully created..\n");
+    }
+}
+
+void send_acc_login(void)
+{
+}
+
+void send_acc_create(void)
+{
 }
