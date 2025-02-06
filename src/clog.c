@@ -15,14 +15,14 @@ void open_console(void)
     if(pid == 0)
     {
         // Child process: open a new terminal
-        execlp("gnome-terminal", "gnome-terminal", "--", "sh", "-c", "tail -f /tmp/my_program.log", NULL);
+        execlp("gnome-terminal", "gnome-terminal", "--", "sh", "-c", "tail -f /tmp/latest.log", NULL);
         perror("execlp");
         exit(EXIT_FAILURE);
     }
     else
     {
         // Parent process: open a log file for writing
-        FILE *log_file = fopen("/tmp/my_program.log", "we");
+        FILE *log_file = fopen("/tmp/latest.log", "we");
         if(log_file == NULL)
         {
             perror("fopen");
