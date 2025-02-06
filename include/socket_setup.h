@@ -19,7 +19,7 @@
 #include <unistd.h>
 
 int   create_socket(int *sockfd);
-int   bind_socket(int sockfd, struct sockaddr_in *serveraddr, uint16_t port);
+int   bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
 void  write_to_socket(int sockfd, const struct Message *msg, const void *payload, size_t payload_size);
 char *read_from_socket(int sockfd);
 

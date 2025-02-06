@@ -16,11 +16,11 @@ int create_socket(int *sockfd)
     return 0;
 }
 
-int bind_socket(int sockfd, struct sockaddr_in *serveraddr, uint16_t port)
+int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port)
 {
     memset(serveraddr, 0, sizeof(*serveraddr));
     serveraddr->sin_family      = AF_INET;
-    serveraddr->sin_addr.s_addr = inet_addr("127.0.0.1");    // Temporary IP
+    serveraddr->sin_addr.s_addr = inet_addr(ipv4);
     serveraddr->sin_port        = htons(port);
 
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)

@@ -17,7 +17,7 @@
 #include <unistd.h>
 
 #define PORT 8080
-
+#define IPV4 "127.0.0.1"
 // #define P_BUFMAX 65541
 
 void send_acc_login(const int *sockfd, const struct account *client);
@@ -34,12 +34,16 @@ int main(void)
 
     open_console();    // open external console, good for when we have n curses
 
+    log_msg("Ip Address: %s\n", IPV4);
+    log_msg("Port: %d\n", PORT);
+    log_msg("Buffer Size: %d\n", BUFSIZE);
+
     if(create_socket(&sockfd) == -1)
     {
         exit(EXIT_FAILURE);
     }
 
-    if(bind_socket(sockfd, &serveraddr, PORT) == -1)
+    if(bind_socket(sockfd, &serveraddr, IPV4, PORT) == -1)
     {
         close(sockfd);
         exit(EXIT_FAILURE);
