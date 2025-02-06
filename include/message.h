@@ -14,13 +14,13 @@ struct Message {
 };
 
 struct ACC_Login {
-    uint32_t username;
-    uint32_t password;
+    char username[50];
+    char password[50];
 };
 
 struct ACC_Create {
-    uint32_t username;
-    uint32_t password;
+    char username[50];
+    char password[50];
 };
 
 typedef enum {

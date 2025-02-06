@@ -16,10 +16,10 @@
 
 #define PORT 8080
 
-#define P_BUFMAX 65541
+// #define P_BUFMAX 65541
 
-void send_acc_login(void);
-void send_acc_create(void);
+void send_acc_login(const int *sockfd, const struct account *client);
+void send_acc_create(const int *sockfd, const struct account *client);
 int  setup_socket(int *sockfd, struct sockaddr_in *serveraddr);
 
 int main(void)
@@ -36,8 +36,12 @@ int main(void)
 
     printf("Enter username: ");
     scanf("%49s", client.username);
+    strncpy(client.password, getpass("Enter password: "), MAX_PASS);
+    client.password[MAX_PASS - 1] = '\0';
 
-    client.password = getpass("Enter password: ");
+    send_acc_login(&sockfd, &client);
+
+    // listen for response
 
     printf("\nUsername: %s\n", client.username);
     printf("Password: %s\n", client.password);
@@ -71,27 +75,48 @@ int setup_socket(int *sockfd, struct sockaddr_in *serveraddr)
     return 0;
 }
 
-void send_acc_login(const int *sockfd,struct account *client)
+void send_acc_login(const int *sockfd, const struct account *client)
 {
-    struct Message msg;
+    struct Message   msg;
     struct ACC_Login lgn;
+    uint8_t          buffer[sizeof(msg) + sizeof(lgn)];
 
-    lgn.username = client->username;
-    lgn.password = *client->password;
+    strncpy(lgn.username, client->username, MAX_USER);
+    lgn.username[MAX_USER - 1] = '\0';
 
-    msg.packet_type = ACC_LOGIN;
+    strncpy(lgn.password, client->password, MAX_PASS);
+    lgn.password[MAX_PASS - 1] = '\0';
+
+    msg.packet_type      = ACC_LOGIN;
     msg.protocol_version = 1;
-    msg.sender_id = client->uid;
-    msg.payload_length = sizeof(lgn);
+    msg.sender_id        = 0;
+    msg.payload_length   = sizeof(lgn);
 
-    uint8_t buffer[sizeof(msg) + sizeof(lgn)];
-    memcpy(buffer, &msg, sizeof(msg));
-    memcpy(buffer + sizeof(msg), &lgn, sizeof(lgn));
+    memcpy((void *)buffer, &msg, sizeof(msg));
+    memcpy((void *)(buffer + sizeof(msg)), &lgn, sizeof(lgn));
 
     send(*sockfd, buffer, sizeof(buffer), 0);
-
 }
 
-void send_acc_create(void)
+void send_acc_create(const int *sockfd, const struct account *client)
 {
+    struct Message    msg;
+    struct ACC_Create crt;
+    uint8_t           buffer[sizeof(msg) + sizeof(crt)];
+
+    strncpy(crt.username, client->username, MAX_USER);
+    crt.username[MAX_USER - 1] = '\0';    // Ensure null-termination
+
+    strncpy(crt.password, client->password, MAX_PASS);
+    crt.password[MAX_PASS - 1] = '\0';    // Ensure null-termination
+
+    msg.packet_type      = ACC_CREATE;
+    msg.protocol_version = 1;
+    msg.sender_id        = 0;
+    msg.payload_length   = sizeof(crt);
+
+    memcpy(buffer, &msg, sizeof(msg));
+    memcpy(buffer + sizeof(msg), &crt, sizeof(crt));
+
+    send(*sockfd, buffer, sizeof(buffer), 0);
 }
