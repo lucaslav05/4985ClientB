@@ -5,13 +5,12 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
-#define MAX_USER 50
-#define MAX_PASS 50
+#define MAX_SIZE 50
 
 struct account
 {
-    char username[MAX_USER];
-    char password[MAX_PASS];
+    char username[MAX_SIZE];
+    char password[MAX_SIZE];
     int  uid;
 };
 
