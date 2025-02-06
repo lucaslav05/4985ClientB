@@ -16,5 +16,6 @@
 
 void open_console(void);
 void log_msg(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void log_error(const char *format, ...) __attribute__((format(printf, 1, 2)));
 
 #endif    // CLIENT_CLOG_H

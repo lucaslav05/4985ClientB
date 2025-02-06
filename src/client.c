@@ -54,10 +54,10 @@ int main(void)
     send_acc_create(&sockfd, &client);
 
     server_res = read_from_socket(sockfd);    // temp
-    printf("Response: %s\n", server_res);
+    log_msg("Response: %s\n", server_res);
 
-    printf("\nUsername: %s\n", client.username);
-    printf("Password: %s\n", client.password);
+    log_msg("\nUsername: %s\n", client.username);
+    log_msg("Password: %s\n", client.password);
 
     close(sockfd);
 }

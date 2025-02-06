@@ -44,11 +44,34 @@ void log_msg(const char *format, ...)
 {
     char  log_buf[BUFSIZE];
     FILE *log_file;
-    snprintf(log_buf, sizeof(log_buf), "%s", format);
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
+    va_end(args);
+
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "%s", log_buf);
+        fprintf(log_file, "[LOG] %s", log_buf);
+        fclose(log_file);
+    }
+}
+
+void log_error(const char *format, ...)
+{
+    char  log_buf[BUFSIZE];
+    FILE *log_file;
+
+    va_list args;
+    va_start(args, format);
+    vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
+    va_end(args);
+
+    log_file = fopen("/tmp/latest.log", "ae");
+    if(log_file != NULL)
+    {
+        fprintf(log_file, "[ERROR] %s", log_buf);
         fclose(log_file);
     }
 }

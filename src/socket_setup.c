@@ -9,7 +9,7 @@ int create_socket(int *sockfd)
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if(*sockfd == -1)
     {
-        log_msg("Socket creation failed...\n");
+        log_error("Socket creation failed...\n");
         return -1;
     }
     log_msg("Socket successfully created..\n");
@@ -25,7 +25,7 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, uint16_t port)
 
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
-        log_msg("Connection with the server failed...\n");
+        log_error("Connection with the server failed...\n");
         return -1;
     }
 
@@ -45,8 +45,30 @@ void write_to_socket(int sockfd, const struct Message *msg, const void *payload,
 
 char *read_from_socket(int sockfd)
 {
-    static char buffer[BUFSIZE] = {0};
-    read(sockfd, buffer, BUFSIZE);
-    printf("Message received: %s\n", buffer);    // log_msg doesnt work with %s stuff, we would need to bypass the compiler flags
+    static char    buffer[BUFSIZE];
+    struct Message msg;
+
+    // Read the message header
+    read(sockfd, &msg, sizeof(struct Message));
+
+    // Ensure the payload fits in the buffer
+    if(msg.payload_length >= BUFSIZE)
+    {
+        log_error("Payload too large to fit in buffer\n");
+        buffer[0] = '\0';    // Set buffer to empty string in case of error
+        return buffer;
+    }
+
+    // Read the payload
+    read(sockfd, buffer, msg.payload_length);
+    buffer[msg.payload_length] = '\0';    // Null-terminate the payload
+
+    log_msg("Message received:\n");
+    log_msg("Packet Type: %d\n", msg.packet_type);
+    log_msg("Protocol Version: %d\n", msg.protocol_version);
+    log_msg("Sender ID: %d\n", msg.sender_id);
+    log_msg("Payload Length: %d\n", msg.payload_length);
+    log_msg("Payload: %s\n", buffer);
+
     return buffer;
 }
