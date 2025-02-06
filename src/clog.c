@@ -48,7 +48,7 @@ void log_msg(const char *format, ...)
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "%s\n", log_buf);
+        fprintf(log_file, "%s", log_buf);
         fclose(log_file);
     }
 }
