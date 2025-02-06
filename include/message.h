@@ -6,6 +6,8 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
+#define MAX_USER 50
+
 struct Message {
     uint8_t packet_type;
     uint8_t protocol_version;
@@ -14,26 +16,14 @@ struct Message {
 };
 
 struct ACC_Login {
-    char username[50];
-    char password[50];
+    char username[MAX_USER];
+    char password[MAX_USER];
 };
 
 struct ACC_Create {
-    char username[50];
-    char password[50];
+    char username[MAX_USER];
+    char password[MAX_USER];
 };
-
-typedef enum {
-    BOOLEAN = 1,
-    INTEGER = 2,
-    NULL_VAL = 5,
-    ENUMERATED = 10,
-    UTF8STRING = 12,
-    SEQUENCE = 16,
-    PRINTABLESTRING = 19,
-    UTCTIME = 23,
-    GENERALIZEDTIME = 24,
-} Tag;
 
 typedef enum {
     SYS_SUCCESS = 0,
