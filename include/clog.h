@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <string.h>
+#include <sys/time.h>
 
 #define BUFSIZE 1024
 
