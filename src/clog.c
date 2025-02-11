@@ -42,8 +42,20 @@ void open_console(void)
 
 void log_msg(const char *format, ...)
 {
-    char  log_buf[BUFSIZE];
-    FILE *log_file;
+    char           log_buf[BUFSIZE];
+    char           time_buf[64];
+    FILE          *log_file;
+    time_t         now;
+    struct tm     *timeinfo;
+    struct timeval tv;
+
+    // Get the current time
+    gettimeofday(&tv, NULL);
+    now      = tv.tv_sec;
+    timeinfo = localtime(&now);
+    // Format the time as a string
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / 1000, tv.tv_usec % 1000);
 
     va_list args;
     va_start(args, format);
@@ -53,15 +65,27 @@ void log_msg(const char *format, ...)
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "[LOG] %s", log_buf);
+        fprintf(log_file, "[%s] [LOG] %s", time_buf, log_buf);
         fclose(log_file);
     }
 }
 
 void log_error(const char *format, ...)
 {
-    char  log_buf[BUFSIZE];
-    FILE *log_file;
+    char           log_buf[BUFSIZE];
+    char           time_buf[64];
+    FILE          *log_file;
+    time_t         now;
+    struct tm     *timeinfo;
+    struct timeval tv;
+
+    // Get the current time
+    gettimeofday(&tv, NULL);
+    now      = tv.tv_sec;
+    timeinfo = localtime(&now);
+    // Format the time as a string
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / 1000, tv.tv_usec % 1000);
 
     va_list args;
     va_start(args, format);
@@ -71,7 +95,7 @@ void log_error(const char *format, ...)
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "[ERROR] %s", log_buf);
+        fprintf(log_file, "[%s] [ERROR] %s", time_buf, log_buf);
         fclose(log_file);
     }
 }
