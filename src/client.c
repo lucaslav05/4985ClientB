@@ -55,12 +55,20 @@ int main(void)
     client.password[MAX_SIZE - 1] = '\0';
 
     send_acc_login(&sockfd, &client);
+    server_res = read_from_socket(sockfd);
+    while(*server_res)
+    {
+        log_msg("Response: %s\n", server_res);
+    }
+
     send_acc_create(&sockfd, &client);
+    server_res = read_from_socket(sockfd);
+    while(*server_res)
+    {
+        log_msg("Response: %s\n", server_res);
+    }
 
-    server_res = read_from_socket(sockfd);    // temp
-    log_msg("Response: %s\n", server_res);
-
-    log_msg("\nUsername: %s\n", client.username);
+    log_msg("Username: %s\n", client.username);
     log_msg("Password: %s\n", client.password);
 
     close(sockfd);

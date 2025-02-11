@@ -35,12 +35,22 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
 
 void write_to_socket(int sockfd, const struct Message *msg, const void *payload, size_t payload_size)
 {
-    uint8_t buffer[sizeof(*msg) + sizeof(payload_size)];
+    size_t   buffer_size = sizeof(*msg) + payload_size;
+    uint8_t *buffer      = (uint8_t *)malloc(buffer_size);
+
+    if(buffer == NULL)
+    {
+        log_error("Memory allocation failed\n");
+        return;
+    }
+
     memcpy(buffer, msg, sizeof(*msg));
     memcpy(buffer + sizeof(*msg), payload, payload_size);
 
-    send(sockfd, buffer, sizeof(buffer), 0);
+    send(sockfd, buffer, buffer_size, 0);
     log_msg("Message sent\n");
+
+    free(buffer);
 }
 
 char *read_from_socket(int sockfd)
