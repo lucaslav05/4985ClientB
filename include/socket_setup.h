@@ -18,9 +18,11 @@
 #include <termios.h>
 #include <unistd.h>
 
-int   create_socket(int *sockfd);
-int   bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
-void  write_to_socket(int sockfd, const struct Message *msg, const void *payload, size_t payload_size);
-char *read_from_socket(int sockfd);
+void           decode_header(const uint8_t buf[], struct Message *msg);
+void           encode_header(uint8_t buf[], const struct Message *msg);
+int            create_socket(int *sockfd);
+int            bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
+void           write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size);
+struct Message read_from_socket(int sockfd, char *buffer);
 
 #endif    // CLIENT_SOCKET_SETUP_H

@@ -6,7 +6,7 @@
 #ifndef MESSAGE_H
     #define MESSAGE_H
 
-    #define MAX_USER 50
+    #define MAX_USER 256
 
 struct Message
 {
@@ -18,25 +18,25 @@ struct Message
 
 struct ACC_Login
 {
-    char username[MAX_USER];
-    char password[MAX_USER];
+    char *username;
+    char *password;
 };
 
 struct ACC_Create
 {
-    char username[MAX_USER];
-    char password[MAX_USER];
+    char *username;
+    char *password;
 };
 
 typedef enum
 {
-    SYS_SUCCESS       = 0,
-    SYS_ERROR         = 1,
-    ACC_LOGIN         = 10,
-    ACC_LOGIN_SUCCESS = 11,
-    ACC_LOGOUT        = 12,
-    ACC_CREATE        = 13,
-    ACC_EDIT          = 14
+    SYS_SUCCESS       = 0x00,
+    SYS_ERROR         = 0x01,
+    ACC_LOGIN         = 0x0A,
+    ACC_LOGIN_SUCCESS = 0x0B,
+    ACC_LOGOUT        = 0x0C,
+    ACC_CREATE        = 0x0D,
+    ACC_EDIT          = 0x0E
 } PacketType;
 
 #endif    // MESSAGE_H

@@ -5,7 +5,7 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
-#define MAX_SIZE 50
+#define MAX_SIZE 256
 
 struct account
 {

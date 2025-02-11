@@ -16,8 +16,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define PORT 8080
-#define IPV4 "127.0.0.1"
+#define PORT 57205
+#define IPV4 "192.168.0.137"
+#define TLV 4
 // #define P_BUFMAX 65541
 
 void send_acc_login(const int *sockfd, const struct account *client);
@@ -29,8 +30,10 @@ int main(void)
 {
     int                sockfd;
     struct sockaddr_in serveraddr;
+    struct Message     response_msg;
     struct account     client;
-    const char        *server_res;
+    // const char        *server_r;
+    char buffer[BUFSIZE];
 
     open_console();    // open external console, good for when we have n curses
 
@@ -52,13 +55,37 @@ int main(void)
     printf("Enter username: ");
     scanf("%49s", client.username);
     strncpy(client.password, getpass("Enter password: "), MAX_SIZE);
-    client.password[MAX_SIZE - 1] = '\0';
 
     send_acc_login(&sockfd, &client);
-    send_acc_create(&sockfd, &client);
 
-    server_res = read_from_socket(sockfd);    // temp
-    log_msg("Response: %s\n", server_res);
+    response_msg = read_from_socket(sockfd, buffer);    // temp
+
+    switch(response_msg.packet_type)
+    {
+        case ACC_LOGIN_SUCCESS:
+            log_msg("Successfully logged in.\n");
+            break;
+
+        case SYS_ERROR:
+            log_msg("Error logging in.\n");
+            send_acc_create(&sockfd, &client);
+
+            response_msg = read_from_socket(sockfd, buffer);    // temp
+
+            if(response_msg.packet_type == SYS_SUCCESS)
+            {
+                log_msg("Successfully created account\n");
+            }
+            else
+            {
+                log_msg("Account creation failed\n");
+            }
+            break;
+
+        default:
+            log_msg("Unknown response from server: 0x%02X\n", response_msg.packet_type);
+            break;
+    }
 
     log_msg("\nUsername: %s\n", client.username);
     log_msg("Password: %s\n", client.password);
@@ -71,18 +98,27 @@ void send_acc_login(const int *sockfd, const struct account *client)
     struct Message   msg;
     struct ACC_Login lgn;
 
-    strncpy(lgn.username, client->username, MAX_SIZE);
-    lgn.username[MAX_SIZE - 1] = '\0';
+    // lgn.username = malloc(strlen(client->username) + 1);
+    // lgn.password = malloc(strlen(client->password) + 1);
+    //
+    // strlcpy(lgn.username, client->username, MAX_SIZE);
+    // strlcpy(lgn.password, client->password, MAX_SIZE);
 
-    strncpy(lgn.password, client->password, MAX_SIZE);
-    lgn.password[MAX_SIZE - 1] = '\0';
+    lgn.username = (char *)malloc(strlen(client->username) + 1);
+    lgn.password = (char *)malloc(strlen(client->password) + 1);
+
+    memcpy(lgn.username, client->username, strlen(client->username));
+    memcpy(lgn.password, client->password, strlen(client->password));
+
+    lgn.username[strlen(client->username)] = '\0';
+    lgn.password[strlen(client->password)] = '\0';
 
     msg.packet_type      = ACC_LOGIN;
     msg.protocol_version = 1;
     msg.sender_id        = 0;
-    msg.payload_length   = sizeof(lgn);
+    msg.payload_length   = htons((uint16_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 
-    write_to_socket(*sockfd, &msg, &lgn, sizeof(lgn));
+    write_to_socket(*sockfd, &msg, &lgn, (size_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 }
 
 void send_acc_create(const int *sockfd, const struct account *client)
@@ -90,16 +126,16 @@ void send_acc_create(const int *sockfd, const struct account *client)
     struct Message    msg;
     struct ACC_Create crt;
 
-    strncpy(crt.username, client->username, MAX_SIZE);
-    crt.username[MAX_SIZE - 1] = '\0';    // Ensure null-termination
+    crt.username = malloc(strlen(client->username) + 1);
+    crt.password = malloc(strlen(client->password) + 1);
 
-    strncpy(crt.password, client->password, MAX_SIZE);
-    crt.password[MAX_SIZE - 1] = '\0';    // Ensure null-termination
+    strlcpy(crt.username, client->username, MAX_SIZE);
+    strlcpy(crt.password, client->password, MAX_SIZE);
 
     msg.packet_type      = ACC_CREATE;
     msg.protocol_version = 1;
     msg.sender_id        = 0;
-    msg.payload_length   = sizeof(crt);
+    msg.payload_length   = (uint16_t)(strlen(crt.username) + strlen(crt.password));
 
     write_to_socket(*sockfd, &msg, &crt, sizeof(crt));
 }
