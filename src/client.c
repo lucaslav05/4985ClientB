@@ -40,23 +40,30 @@ int main(void)
     log_msg("Port: %d\n", PORT);
     log_msg("Buffer Size: %d\n", BUFSIZE);
 
+    log_msg("Creating socket...\n");
     if(create_socket(&sockfd) == -1)
     {
+        log_error("Creating socket failed\n");
         exit(EXIT_FAILURE);
     }
 
+    log_msg("Binding socket...\n");
     if(bind_socket(sockfd, &serveraddr, IPV4, PORT) == -1)
     {
+        log_error("Binding socket failed\n");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
+    log_msg("Prompting login...!\n");
     printf("Enter username: ");
     scanf("%49s", client.username);
     strncpy(client.password, getpass("Enter password: "), MAX_SIZE);
 
+    log_msg("Sending account login...\n");
     send_acc_login(&sockfd, &client);
 
+    log_msg("Reading response...\n");
     response_msg = read_from_socket(sockfd, buffer);
 
     switch(response_msg->packet_type)
@@ -67,28 +74,29 @@ int main(void)
 
         case SYS_ERROR:
             log_msg("Error logging in.\n");
+            log_msg("Creating account...\n");
             send_acc_create(&sockfd, &client);
-
+            log_msg("Reading response...\n");
             response_msg = read_from_socket(sockfd, buffer);    // temp
 
             if(response_msg->packet_type == SYS_SUCCESS)
             {
                 log_msg("Successfully created account\n");
+                break;
             }
-            else
-            {
-                log_msg("Account creation failed\n");
-            }
+
+            log_error("Account creation failed\n");
             break;
 
         default:
-            log_msg("Unknown response from server: 0x%02X\n", response_msg->packet_type);
+            log_error("Unknown response from server: 0x%02X\n", response_msg->packet_type);
             break;
     }
 
     log_msg("\nUsername: %s\n", client.username);
     log_msg("Password: %s\n", client.password);
 
+    log_msg("Cleaning up and exiting...\n");
     close(sockfd);
     free(response_msg);
 }
@@ -98,6 +106,7 @@ void send_acc_login(const int *sockfd, const struct account *client)
     struct Message   msg;
     struct ACC_Login lgn;
 
+    log_msg("Allocating login info memory...\n");
     lgn.username = (char *)malloc(strlen(client->username) + 1);
     lgn.password = (char *)malloc(strlen(client->password) + 1);
 
@@ -109,20 +118,24 @@ void send_acc_login(const int *sockfd, const struct account *client)
         return;
     }
 
+    log_msg("Copying username and password to login info struct...\n");
     memcpy(lgn.username, client->username, strlen(client->username));
     memcpy(lgn.password, client->password, strlen(client->password));
 
     lgn.username[strlen(client->username)] = '\0';
     lgn.password[strlen(client->password)] = '\0';
 
+    log_msg("Setting up message structure for login...\n");
     msg.packet_type      = ACC_LOGIN;
     msg.protocol_version = 1;
     msg.sender_id        = 0;
     msg.payload_length   = htons((uint16_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 
+    log_msg("Sending login message to socket...\n");
     write_to_socket(*sockfd, &msg, &lgn, (size_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 
     // Free allocated memory before exiting
+    log_msg("Freeing allocated login info memory...\n");
     free(lgn.username);
     free(lgn.password);
 }
@@ -132,6 +145,7 @@ void send_acc_create(const int *sockfd, const struct account *client)
     struct Message    msg;
     struct ACC_Create crt;
 
+    log_msg("Allocating account creation info memory...\n");
     crt.username = (char *)malloc(strlen(client->username) + 1);
     crt.password = (char *)malloc(strlen(client->password) + 1);
 
@@ -143,17 +157,21 @@ void send_acc_create(const int *sockfd, const struct account *client)
         return;
     }
 
+    log_msg("Copying username and password to creation info struct...\n");
     strlcpy(crt.username, client->username, MAX_SIZE);
     strlcpy(crt.password, client->password, MAX_SIZE);
 
+    log_msg("Setting up message structure for account creation...\n");
     msg.packet_type      = ACC_CREATE;
     msg.protocol_version = 1;
     msg.sender_id        = 0;
     msg.payload_length   = (uint16_t)(strlen(crt.username) + strlen(crt.password));
 
+    log_msg("Sending account creation message to socket...\n");
     write_to_socket(*sockfd, &msg, &crt, sizeof(crt));
 
     // Free allocated memory before exiting
+    log_msg("Freeing allocated account creation info memory...\n");
     free(crt.username);
     free(crt.password);
 }
