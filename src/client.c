@@ -16,8 +16,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define PORT 57205
-#define IPV4 "192.168.0.137"
+#define PORT 8081
+#define IPV4 "0.0.0.0"
 #define TLV 4
 // #define P_BUFMAX 65541
 

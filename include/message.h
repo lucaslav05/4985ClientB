@@ -39,4 +39,17 @@ typedef enum
     ACC_EDIT          = 0x0E
 } PacketType;
 
+typedef enum
+{
+    BOOLEAN = 1,
+    INTEGER,
+    NUL             = 5,
+    ENUMERATED      = 10,
+    UTF8STRING      = 12,
+    SEQUENCE        = 16,
+    PRINTABLESTRING = 19,
+    UTCTIME         = 23,
+    GENERALIZEDTIME,
+} Tags;
+
 #endif    // MESSAGE_H
