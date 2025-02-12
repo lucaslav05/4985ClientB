@@ -16,7 +16,7 @@ void decode_header(const uint8_t buf[], struct Message *msg)
 
     memcpy(&copy, buf + pos, sizeof(uint16_t));
     msg->sender_id = ntohs(copy);
-    pos += sizeof(uint16_t);
+    pos += (int)sizeof(uint16_t);
 
     memcpy(&copy, buf + pos, sizeof(uint16_t));
     msg->payload_length = ntohs(copy);
@@ -77,8 +77,10 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
         const uint8_t *byte_data = (const uint8_t *)data;
         memcpy(buffer, &tag_line, sizeof(uint32_t));
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcovered-switch-default"
+#ifdef __clang__
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wcovered-switch-default"
+#endif
         switch(tag)
         {
             case BOOLEAN:
@@ -112,11 +114,13 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
                 *payload_size = 0;
                 break;
         }
-#pragma clang diagnostic pop
+#ifdef __clang__
+    #pragma clang diagnostic pop
+#endif
     }
 }
 
-void decode_payload(uint8_t *buffer, Tags *tag, void *data)
+/*void decode_payload(uint8_t *buffer, Tags *tag, void *data)
 {
     size_t   offset;
     uint32_t temp;
@@ -168,7 +172,7 @@ void decode_payload(uint8_t *buffer, Tags *tag, void *data)
             break;
     }
 #pragma clang diagnostic pop
-}
+}*/
 
 int create_socket(int *sockfd)
 {
@@ -272,54 +276,61 @@ cleanup:
     free(encoded_payload);
 }
 
-struct Message read_from_socket(int sockfd, char *buffer)
+struct Message *read_from_socket(int sockfd, char *buffer)
 {
-    struct Message msg = {0};
-    uint8_t        header_buf[MAX_HEADER_SIZE];
+    struct Message *msg = (struct Message *)malloc(sizeof(struct Message));
+    uint8_t         header_buf[MAX_HEADER_SIZE];
+    ssize_t         bytes_read;
+
+    if(msg == NULL)
+    {
+        log_error("Failed to allocate memory for Message\n");
+        return NULL;
+    }
 
     // Read the message header
-    ssize_t bytes_read = read(sockfd, header_buf, sizeof(header_buf));
+    bytes_read = read(sockfd, header_buf, sizeof(header_buf));
     if(bytes_read < 0)
     {
         log_error("Failed to read message header\n");
-        msg.packet_type = SYS_ERROR;
+        msg->packet_type = SYS_ERROR;
         return msg;
     }
     if((size_t)bytes_read < sizeof(header_buf))
     {
         log_error("Incomplete message header received\n");
-        msg.packet_type = SYS_ERROR;
+        msg->packet_type = SYS_ERROR;
         return msg;
     }
 
     // Decode the header
-    decode_header(header_buf, &msg);
+    decode_header(header_buf, msg);
 
     // Ensure the payload fits in the buffer
-    if(msg.payload_length >= BUFSIZE)
+    if(msg->payload_length >= BUFSIZE)
     {
         log_error("Payload too large to fit in buffer\n");
-        buffer[0]       = '\0';
-        msg.packet_type = SYS_ERROR;
+        buffer[0]        = '\0';
+        msg->packet_type = SYS_ERROR;
         return msg;
     }
 
     // Read the dynamic payload
-    bytes_read = read(sockfd, buffer, msg.payload_length);
+    bytes_read = read(sockfd, buffer, msg->payload_length);
     if(bytes_read < 0)
     {
         log_error("Failed to read payload\n");
-        msg.packet_type = SYS_ERROR;
+        msg->packet_type = SYS_ERROR;
         return msg;
     }
 
-    buffer[msg.payload_length] = '\0';    // Null-terminate
+    buffer[msg->payload_length] = '\0';    // Null-terminate
 
-    log_msg("Message received (size: %d bytes):\n", msg.payload_length);
-    log_msg("Packet Type: %d\n", msg.packet_type);
-    log_msg("Protocol Version: %d\n", msg.protocol_version);
-    log_msg("Sender ID: %d\n", msg.sender_id);
-    log_msg("Payload Length: %d\n", msg.payload_length);
+    log_msg("Message received (size: %d bytes):\n", msg->payload_length);
+    log_msg("Packet Type: %d\n", msg->packet_type);
+    log_msg("Protocol Version: %d\n", msg->protocol_version);
+    log_msg("Sender ID: %d\n", msg->sender_id);
+    log_msg("Payload Length: %d\n", msg->payload_length);
     log_msg("Payload: %s\n", buffer);
 
     return msg;

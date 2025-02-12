@@ -18,13 +18,13 @@
 #include <termios.h>
 #include <unistd.h>
 
-void           decode_header(const uint8_t buf[], struct Message *msg);
-void           encode_header(uint8_t buf[], const struct Message *msg);
-void           encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload_size);
-void           decode_payload(uint8_t *buffer, Tags *tag, void *data);
-int            create_socket(int *sockfd);
-int            bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
-void           write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size);
-struct Message read_from_socket(int sockfd, char *buffer);
+void decode_header(const uint8_t buf[], struct Message *msg);
+void encode_header(uint8_t buf[], const struct Message *msg);
+void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload_size);
+// void            decode_payload(uint8_t *buffer, Tags *tag, void *data);
+int             create_socket(int *sockfd);
+int             bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
+void            write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size);
+struct Message *read_from_socket(int sockfd, char *buffer);
 
 #endif    // CLIENT_SOCKET_SETUP_H

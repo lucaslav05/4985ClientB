@@ -30,10 +30,9 @@ int main(void)
 {
     int                sockfd;
     struct sockaddr_in serveraddr;
-    struct Message     response_msg;
+    struct Message    *response_msg;
     struct account     client;
-    // const char        *server_r;
-    char buffer[BUFSIZE];
+    char               buffer[BUFSIZE];
 
     open_console();    // open external console, good for when we have n curses
 
@@ -58,9 +57,9 @@ int main(void)
 
     send_acc_login(&sockfd, &client);
 
-    response_msg = read_from_socket(sockfd, buffer);    // temp
+    response_msg = read_from_socket(sockfd, buffer);
 
-    switch(response_msg.packet_type)
+    switch(response_msg->packet_type)
     {
         case ACC_LOGIN_SUCCESS:
             log_msg("Successfully logged in.\n");
@@ -72,7 +71,7 @@ int main(void)
 
             response_msg = read_from_socket(sockfd, buffer);    // temp
 
-            if(response_msg.packet_type == SYS_SUCCESS)
+            if(response_msg->packet_type == SYS_SUCCESS)
             {
                 log_msg("Successfully created account\n");
             }
@@ -83,7 +82,7 @@ int main(void)
             break;
 
         default:
-            log_msg("Unknown response from server: 0x%02X\n", response_msg.packet_type);
+            log_msg("Unknown response from server: 0x%02X\n", response_msg->packet_type);
             break;
     }
 
@@ -91,6 +90,7 @@ int main(void)
     log_msg("Password: %s\n", client.password);
 
     close(sockfd);
+    free(response_msg);
 }
 
 void send_acc_login(const int *sockfd, const struct account *client)
@@ -132,8 +132,8 @@ void send_acc_create(const int *sockfd, const struct account *client)
     struct Message    msg;
     struct ACC_Create crt;
 
-    crt.username = malloc(strlen(client->username) + 1);
-    crt.password = malloc(strlen(client->password) + 1);
+    crt.username = (char *)malloc(strlen(client->username) + 1);
+    crt.password = (char *)malloc(strlen(client->password) + 1);
 
     if(!crt.username || !crt.password)
     {
