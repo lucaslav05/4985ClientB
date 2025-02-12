@@ -47,25 +47,23 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
     uint32_t net_value;
     uint8_t *ptr = buffer;
 
-    if(tag == SEQUENCE)
+    if(tag == UTF8STRING)
     {
-        const struct ACC_Login *acc = (const struct ACC_Login *)data;
+        const struct ACC_Login *acc          = (const struct ACC_Login *)data;
+        size_t                  username_len = strlen(acc->username);
+        size_t                  password_len = strlen(acc->password);
+        size_t                  total_len    = username_len + password_len + 1;    // +1 for separator
 
-        // SEQUENCE header
-        *ptr++ = (uint8_t)SEQUENCE;
-        *ptr++ = (uint8_t)(strlen(acc->username) + strlen(acc->password) + 4);    // Total length
-
-        // Encode Username as UTF8STRING
+        // Encode tag and length
         *ptr++ = (uint8_t)UTF8STRING;
-        *ptr++ = (uint8_t)strlen(acc->username);
-        memcpy(ptr, acc->username, strlen(acc->username));
-        ptr += strlen(acc->username);
+        *ptr++ = (uint8_t)total_len;
 
-        // Encode Password as UTF8STRING
-        *ptr++ = (uint8_t)UTF8STRING;
-        *ptr++ = (uint8_t)strlen(acc->password);
-        memcpy(ptr, acc->password, strlen(acc->password));
-        ptr += strlen(acc->password);
+        // Copy username and password with a separator (e.g., ':')
+        memcpy(ptr, acc->username, username_len);
+        ptr += username_len;
+        *ptr++ = ':';    // Separator
+        memcpy(ptr, acc->password, password_len);
+        ptr += password_len;
 
         *payload_size = (size_t)(ptr - buffer);
     }
@@ -95,7 +93,7 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
                 *payload_size = offset + sizeof(uint32_t);
                 break;
 
-            case UTF8STRING:
+            case SEQUENCE:
             case PRINTABLESTRING:
                 src_len = strlen((const char *)data);
                 strlcpy((char *)(buffer + offset), (const char *)data, src_len + 1);
@@ -106,7 +104,7 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
             case GENERALIZEDTIME:
             case NUL:           // Unused but explicitly handled
             case ENUMERATED:    // Unused but explicitly handled
-            case SEQUENCE:      // Handled in the outer condition
+            case UTF8STRING:    // Handled in the outer condition
                 log_error("Unexpected tag type in switch: %u\n", tag);
                 *payload_size = 0;
                 break;
@@ -223,8 +221,6 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     switch(msg->packet_type)
     {
         case ACC_LOGIN:
-            tag = SEQUENCE;
-            break;
         case SYS_SUCCESS:
         case SYS_ERROR:
         case ACC_LOGIN_SUCCESS:
