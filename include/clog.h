@@ -7,6 +7,7 @@
 
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,5 +22,6 @@
 void open_console(void);
 void log_msg(const char *format, ...) __attribute__((format(printf, 1, 2)));
 void log_error(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void log_payload_hex(const uint8_t *payload, size_t size);
 
 #endif    // CLIENT_CLOG_H

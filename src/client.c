@@ -66,6 +66,13 @@ int main(void)
     log_msg("Reading response...\n");
     response_msg = read_from_socket(sockfd, buffer);
 
+    if(response_msg == NULL)
+    {
+        log_error("Failed to read response from socket\n");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
+
     switch(response_msg->packet_type)
     {
         case ACC_LOGIN_SUCCESS:
@@ -77,7 +84,7 @@ int main(void)
             log_msg("Creating account...\n");
             send_acc_create(&sockfd, &client);
             log_msg("Reading response...\n");
-            response_msg = read_from_socket(sockfd, buffer);    // temp
+            response_msg = read_from_socket(sockfd, buffer);
 
             if(response_msg->packet_type == SYS_SUCCESS)
             {
@@ -93,7 +100,7 @@ int main(void)
             break;
     }
 
-    log_msg("\nUsername: %s\n", client.username);
+    log_msg("Username: %s\n", client.username);
     log_msg("Password: %s\n", client.password);
 
     log_msg("Cleaning up and exiting...\n");

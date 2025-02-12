@@ -103,3 +103,24 @@ void log_error(const char *format, ...)
         fclose(log_file);
     }
 }
+
+void log_payload_hex(const uint8_t *payload, size_t size)
+{
+    // Each byte requires 3 characters: 2 for the hex representation and 1 for space
+    size_t hex_buf_size = 3 * size + 1;
+    char  *hex_buf      = (char *)malloc(hex_buf_size);
+    if(hex_buf == NULL)
+    {
+        log_error("Memory allocation failed for hex buffer\n");
+        return;
+    }
+
+    for(size_t i = 0; i < size; ++i)
+    {
+        snprintf(&hex_buf[i * 3], 4, "%02x ", payload[i]);
+    }
+
+    log_msg("Encoded payload: %s\n", hex_buf);
+
+    free(hex_buf);
+}

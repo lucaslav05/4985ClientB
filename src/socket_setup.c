@@ -272,8 +272,8 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     memcpy(buffer + header_size, encoded_payload, encoded_payload_size);
 
     // Log the original and encoded payloads.
-    log_msg("Original payload: %s\n", (const char *)payload);
-    log_msg("Encoded  payload: %.*s\n", (int)encoded_payload_size, encoded_payload);
+    log_msg("Payload: %.*s\n", (int)encoded_payload_size, encoded_payload);
+    log_payload_hex(encoded_payload, encoded_payload_size);
 
     log_msg("Sending the complete message over the socket...\n");
     // Send the complete message over the socket.
@@ -312,13 +312,13 @@ struct Message *read_from_socket(int sockfd, char *buffer)
     {
         log_error("Failed to read message header\n");
         msg->packet_type = SYS_ERROR;
-        return msg;
+        goto cleanup;
     }
     if((size_t)bytes_read < sizeof(header_buf))
     {
         log_error("Incomplete message header received\n");
         msg->packet_type = SYS_ERROR;
-        return msg;
+        goto cleanup;
     }
 
     log_msg("Decoding the header...\n");
@@ -332,7 +332,7 @@ struct Message *read_from_socket(int sockfd, char *buffer)
         log_error("Payload too large to fit in buffer\n");
         buffer[0]        = '\0';
         msg->packet_type = SYS_ERROR;
-        return msg;
+        goto cleanup;
     }
 
     log_msg("Reading the dynamic payload...\n");
@@ -342,7 +342,7 @@ struct Message *read_from_socket(int sockfd, char *buffer)
     {
         log_error("Failed to read payload\n");
         msg->packet_type = SYS_ERROR;
-        return msg;
+        goto cleanup;
     }
 
     buffer[msg->payload_length] = '\0';    // Null-terminate
@@ -355,4 +355,8 @@ struct Message *read_from_socket(int sockfd, char *buffer)
     log_msg("Payload: %s\n", buffer);
 
     return msg;
+
+cleanup:
+    free(msg);
+    return NULL;
 }
