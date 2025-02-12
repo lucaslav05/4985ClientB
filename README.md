@@ -54,7 +54,7 @@ You will need to create the CMakeLists.txt file:
 Tell CMake which compiler you want to use:
 
 ```bash
-./change-compiler.sh -c <compiler>
+./change-compiler.sh -c <compiler> -s <sanitizers>
 ```
 
 To the see the list of possible compilers:
