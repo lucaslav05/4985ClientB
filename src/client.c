@@ -66,42 +66,42 @@ int main(void)
     log_msg("Reading response...\n");
     response_msg = read_from_socket(sockfd, buffer);
 
-    if(response_msg == NULL)
+    send_acc_create(&sockfd, &client);
+    while(response_msg)
     {
-        log_error("Failed to read response from socket\n");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
-
-    switch(response_msg->packet_type)
-    {
-        case ACC_LOGIN_SUCCESS:
-            log_msg("Successfully logged in.\n");
-            break;
-
-        case SYS_ERROR:
-            log_msg("Error logging in.\n");
-            log_msg("Creating account...\n");
-            send_acc_create(&sockfd, &client);
-            log_msg("Reading response...\n");
-            response_msg = read_from_socket(sockfd, buffer);
-
-            if(response_msg->packet_type == SYS_SUCCESS)
-            {
-                log_msg("Successfully created account\n");
+        switch(response_msg->packet_type)
+        {
+            case ACC_LOGIN_SUCCESS:
+                log_msg("Successfully logged in.\n");
                 break;
-            }
 
-            log_error("Account creation failed\n");
-            break;
+            case SYS_ERROR:
+                log_msg("Error logging in.\n");
+                log_msg("Creating account...\n");
+                send_acc_create(&sockfd, &client);
+                log_msg("Reading response...\n");
+                response_msg = read_from_socket(sockfd, buffer);
 
-        default:
-            log_error("Unknown response from server: 0x%02X\n", response_msg->packet_type);
-            break;
+                while(response_msg)
+                {
+                    if(response_msg->packet_type == SYS_SUCCESS)
+                    {
+                        log_msg("Successfully created account\n");
+                        break;
+                    }
+                    log_error("Account creation failed\n");
+                    break;
+                }
+                break;
+
+            default:
+                log_error("Unknown response from server: 0x%02X\n", response_msg->packet_type);
+                break;
+        }
+
+        log_msg("Username: %s\n", client.username);
+        log_msg("Password: %s\n", client.password);
     }
-
-    log_msg("Username: %s\n", client.username);
-    log_msg("Password: %s\n", client.password);
 
     log_msg("Cleaning up and exiting...\n");
     close(sockfd);
