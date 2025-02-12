@@ -42,22 +42,22 @@ void open_console(void)
 
 void log_msg(const char *format, ...)
 {
-    char           log_buf[BUFSIZE];
-    char           time_buf[TIMEBUFSIZE];
-    FILE          *log_file;
-    time_t         now;
-    struct tm     *timeinfo;
-    struct timeval tv;
-    va_list        args;
+    char             log_buf[BUFSIZE];
+    char             time_buf[TIMEBUFSIZE];
+    FILE            *log_file;
+    time_t           now;
+    struct tm        timeinfo;
+    const struct tm *timeinfoptr;
+    struct timeval   tv;
+    va_list          args;
 
     // Get the current time
     gettimeofday(&tv, NULL);
-    now      = tv.tv_sec;
-    timeinfo = malloc(sizeof(struct tm));
-    timeinfo = localtime_r(&now, timeinfo);
+    now         = tv.tv_sec;
+    timeinfoptr = localtime_r(&now, &timeinfo);
 
     // Format the time as a string
-    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfoptr);
     snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
 
     va_start(args, format);
@@ -69,31 +69,27 @@ void log_msg(const char *format, ...)
     {
         fprintf(log_file, "[%s] [LOG] %s", time_buf, log_buf);
         fclose(log_file);
-        goto cleanup;
     }
-
-cleanup:
-    free(timeinfo);
 }
 
 void log_error(const char *format, ...)
 {
-    char           log_buf[BUFSIZE];
-    char           time_buf[TIMEBUFSIZE];
-    FILE          *log_file;
-    time_t         now;
-    struct tm     *timeinfo;
-    struct timeval tv;
-    va_list        args;
+    char             log_buf[BUFSIZE];
+    char             time_buf[TIMEBUFSIZE];
+    FILE            *log_file;
+    time_t           now;
+    struct tm        timeinfo;
+    const struct tm *timeinfoptr;
+    struct timeval   tv;
+    va_list          args;
 
     // Get the current time
     gettimeofday(&tv, NULL);
-    now      = tv.tv_sec;
-    timeinfo = malloc(sizeof(struct tm));
-    timeinfo = localtime_r(&now, timeinfo);
+    now         = tv.tv_sec;
+    timeinfoptr = localtime_r(&now, &timeinfo);
 
     // Format the time as a string
-    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
+    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfoptr);
     snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
 
     va_start(args, format);
@@ -105,9 +101,5 @@ void log_error(const char *format, ...)
     {
         fprintf(log_file, "[%s] [ERROR] %s", time_buf, log_buf);
         fclose(log_file);
-        goto cleanup;
     }
-
-cleanup:
-    free(timeinfo);
 }

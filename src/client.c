@@ -98,14 +98,16 @@ void send_acc_login(const int *sockfd, const struct account *client)
     struct Message   msg;
     struct ACC_Login lgn;
 
-    // lgn.username = malloc(strlen(client->username) + 1);
-    // lgn.password = malloc(strlen(client->password) + 1);
-    //
-    // strlcpy(lgn.username, client->username, MAX_SIZE);
-    // strlcpy(lgn.password, client->password, MAX_SIZE);
-
     lgn.username = (char *)malloc(strlen(client->username) + 1);
     lgn.password = (char *)malloc(strlen(client->password) + 1);
+
+    if(!lgn.username || !lgn.password)
+    {
+        log_error("Login info allocation failed\n");
+        free(lgn.username);
+        free(lgn.password);
+        return;
+    }
 
     memcpy(lgn.username, client->username, strlen(client->username));
     memcpy(lgn.password, client->password, strlen(client->password));
@@ -119,6 +121,10 @@ void send_acc_login(const int *sockfd, const struct account *client)
     msg.payload_length   = htons((uint16_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 
     write_to_socket(*sockfd, &msg, &lgn, (size_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
+
+    // Free allocated memory before exiting
+    free(lgn.username);
+    free(lgn.password);
 }
 
 void send_acc_create(const int *sockfd, const struct account *client)
@@ -129,6 +135,14 @@ void send_acc_create(const int *sockfd, const struct account *client)
     crt.username = malloc(strlen(client->username) + 1);
     crt.password = malloc(strlen(client->password) + 1);
 
+    if(!crt.username || !crt.password)
+    {
+        log_error("Creation info allocation failed\n");
+        free(crt.username);
+        free(crt.password);
+        return;
+    }
+
     strlcpy(crt.username, client->username, MAX_SIZE);
     strlcpy(crt.password, client->password, MAX_SIZE);
 
@@ -138,6 +152,10 @@ void send_acc_create(const int *sockfd, const struct account *client)
     msg.payload_length   = (uint16_t)(strlen(crt.username) + strlen(crt.password));
 
     write_to_socket(*sockfd, &msg, &crt, sizeof(crt));
+
+    // Free allocated memory before exiting
+    free(crt.username);
+    free(crt.password);
 }
 
 /*int setup_socket(int *sockfd, struct sockaddr_in *serveraddr)

@@ -90,7 +90,7 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
 
             case INTEGER:
                 value     = *(const int32_t *)data;
-                net_value = htonl((uint32_t)value);                       // Convert to unsigned before htonl
+                net_value = htonl((uint32_t)value);    // Convert to unsigned before htonl
                 memcpy(buffer + offset, &net_value, sizeof(uint32_t));
                 *payload_size = offset + sizeof(uint32_t);
                 break;
@@ -123,6 +123,11 @@ void decode_payload(uint8_t *buffer, Tags *tag, void *data)
     size_t   offset;
     uint32_t temp;
     uint32_t tag_line;
+    if(sizeof(buffer) < sizeof(uint32_t))
+    {
+        log_error("Buffer too small to decode payload\n");
+        return;
+    }
     memcpy(&tag_line, buffer, sizeof(uint32_t));
     *tag = ntohl(tag_line);
 
@@ -150,9 +155,16 @@ void decode_payload(uint8_t *buffer, Tags *tag, void *data)
         case UTF8STRING:
         case PRINTABLESTRING:
         case SEQUENCE:
+        {
+            size_t data_len = strlen((char *)(buffer + offset));
+            if(data_len >= BUFSIZE)
+            {
+                log_error("String too long for buffer\n");
+                return;
+            }
             strlcpy((char *)data, (char *)(buffer + offset), BUFSIZE);
             break;
-
+        }
         default:
             log_error("Unknown tag type: %u\n", *tag);
             break;
@@ -192,17 +204,17 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
 void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size)
 {
     ssize_t  sent_bytes;
-    uint8_t *buffer;
     size_t   total_size;
     Tags     tag;
     size_t   header_size          = MAX_HEADER_SIZE;    // Fixed header size (1 byte type, 1 byte version, 2 bytes sender_id, 2 bytes payload_length)
     size_t   encoded_payload_size = 0;
     size_t   encoding_buffer_size = payload_size + ENCODING_OVERHEAD;
+    uint8_t *buffer               = NULL;
     uint8_t *encoded_payload      = (uint8_t *)malloc(encoding_buffer_size);
     if(!encoded_payload)
     {
         log_error("Memory allocation failed for encoded payload\n");
-        return;
+        goto cleanup;
     }
 
     // Determine the tag for encoding.
@@ -236,8 +248,7 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     if(!buffer)
     {
         log_error("Memory allocation failed for message buffer\n");
-        free(encoded_payload);
-        return;
+        goto cleanup;
     }
 
     msg->payload_length = (uint16_t)encoded_payload_size;
@@ -260,6 +271,7 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     }
 
     // Clean up allocated memory.
+cleanup:
     free(buffer);
     free(encoded_payload);
 }
