@@ -43,21 +43,23 @@ void open_console(void)
 void log_msg(const char *format, ...)
 {
     char           log_buf[BUFSIZE];
-    char           time_buf[64];
+    char           time_buf[TIMEBUFSIZE];
     FILE          *log_file;
     time_t         now;
     struct tm     *timeinfo;
     struct timeval tv;
+    va_list        args;
 
     // Get the current time
     gettimeofday(&tv, NULL);
     now      = tv.tv_sec;
-    timeinfo = localtime(&now);
+    timeinfo = malloc(sizeof(struct tm));
+    timeinfo = localtime_r(&now, timeinfo);
+
     // Format the time as a string
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
-    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / 1000, tv.tv_usec % 1000);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
 
-    va_list args;
     va_start(args, format);
     vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
     va_end(args);
@@ -67,27 +69,33 @@ void log_msg(const char *format, ...)
     {
         fprintf(log_file, "[%s] [LOG] %s", time_buf, log_buf);
         fclose(log_file);
+        goto cleanup;
     }
+
+cleanup:
+    free(timeinfo);
 }
 
 void log_error(const char *format, ...)
 {
     char           log_buf[BUFSIZE];
-    char           time_buf[64];
+    char           time_buf[TIMEBUFSIZE];
     FILE          *log_file;
     time_t         now;
     struct tm     *timeinfo;
     struct timeval tv;
+    va_list        args;
 
     // Get the current time
     gettimeofday(&tv, NULL);
     now      = tv.tv_sec;
-    timeinfo = localtime(&now);
+    timeinfo = malloc(sizeof(struct tm));
+    timeinfo = localtime_r(&now, timeinfo);
+
     // Format the time as a string
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfo);
-    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / 1000, tv.tv_usec % 1000);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
 
-    va_list args;
     va_start(args, format);
     vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
     va_end(args);
@@ -97,5 +105,9 @@ void log_error(const char *format, ...)
     {
         fprintf(log_file, "[%s] [ERROR] %s", time_buf, log_buf);
         fclose(log_file);
+        goto cleanup;
     }
+
+cleanup:
+    free(timeinfo);
 }

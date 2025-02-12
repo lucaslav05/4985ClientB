@@ -55,16 +55,26 @@ if [ -z "$c_compiler" ]; then
   usage
 fi
 
+# Ensure supported_c_compilers.txt exists
+if [ ! -f "supported_c_compilers.txt" ]; then
+    echo "Error: supported_c_compilers.txt not found."
+    exit 1
+fi
+
+# Ensure the compiler is listed in supported_c_compilers.txt
+if ! grep -Fxq "$c_compiler" supported_c_compilers.txt; then
+    echo "Error: The specified compiler '$c_compiler' is not in supported_c_compilers.txt."
+    echo "Supported compilers:"
+    cat supported_c_compilers.txt
+    exit 1
+fi
+
 if [ ! -d "./.flags" ]; then
     echo "Error: .flags directory does not exist. Please run generate-flags.sh to create it."
     exit 1
 fi
 
 ./check-env.sh -c "$c_compiler" -f "$clang_format_name" -t "$clang_tidy_name" -k "$cppcheck_name"
-
-if [ ! -f "supported_c_compilers.txt" ] || ! grep -Fxq "$c_compiler" supported_c_compilers.txt; then
-   ./check-compilers.sh
-fi
 
 if [ ! -d "./.flags/$c_compiler" ]; then
     ./generate-flags.sh
@@ -73,7 +83,7 @@ fi
 # Read sanitizers from sanitizers.txt if -s was not passed
 if ! $sanitizers_passed; then
     if [ -f "sanitizers.txt" ]; then
-        sanitizers=$(cat sanitizers.txt | tr -d ' \n')  # Remove spaces and newlines
+        sanitizers=$(tr -d ' \n' < sanitizers.txt)  # Remove spaces and newlines
         echo "Sanitizers loaded from sanitizers.txt: $sanitizers"
     else
         echo "Error: sanitizers.txt not found and no sanitizers provided via -s option."
