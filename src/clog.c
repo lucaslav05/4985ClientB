@@ -40,10 +40,10 @@ void open_console(void)
     }
 }
 
-void log_msg(const char *format, ...)
+void log_msg(const char *func, const char *format, ...)
 {
-    char             log_buf[BUFSIZE];
-    char             time_buf[TIMEBUFSIZE];
+    char             log_buf[BUFFER];
+    char             time_buf[TIME_BUFFER];
     FILE            *log_file;
     time_t           now;
     struct tm        timeinfo;
@@ -58,7 +58,7 @@ void log_msg(const char *format, ...)
 
     // Format the time as a string
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfoptr);
-    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), ":%03ld", tv.tv_usec / DIVIDEND);
 
     va_start(args, format);
     vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
@@ -67,15 +67,15 @@ void log_msg(const char *format, ...)
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "[%s] [LOG] %s", time_buf, log_buf);
+        fprintf(log_file, "[%s] [LOG] [%s] %s", time_buf, func, log_buf);
         fclose(log_file);
     }
 }
 
-void log_error(const char *format, ...)
+void log_error(const char *func, const char *format, ...)
 {
-    char             log_buf[BUFSIZE];
-    char             time_buf[TIMEBUFSIZE];
+    char             log_buf[BUFFER];
+    char             time_buf[TIME_BUFFER];
     FILE            *log_file;
     time_t           now;
     struct tm        timeinfo;
@@ -90,7 +90,7 @@ void log_error(const char *format, ...)
 
     // Format the time as a string
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfoptr);
-    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), "::%03ld:%03ld", tv.tv_usec / DIVIDEND, tv.tv_usec % DIVIDEND);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), ":%03ld", tv.tv_usec / DIVIDEND);
 
     va_start(args, format);
     vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
@@ -99,19 +99,19 @@ void log_error(const char *format, ...)
     log_file = fopen("/tmp/latest.log", "ae");
     if(log_file != NULL)
     {
-        fprintf(log_file, "[%s] [ERROR] %s", time_buf, log_buf);
+        fprintf(log_file, "[%s] [ERROR] [%s] %s", time_buf, func, log_buf);
         fclose(log_file);
     }
 }
 
-void log_payload_hex(const uint8_t *payload, size_t size)
+void log_payload_hex(const char *func, const uint8_t *payload, size_t size)
 {
     // Each byte requires 3 characters: 2 for the hex representation and 1 for space
     size_t hex_buf_size = 3 * size + 1;
     char  *hex_buf      = (char *)malloc(hex_buf_size);
     if(hex_buf == NULL)
     {
-        log_error("Memory allocation failed for hex buffer\n");
+        log_error(func, "Memory allocation failed for hex buffer\n");
         return;
     }
 
@@ -120,7 +120,7 @@ void log_payload_hex(const uint8_t *payload, size_t size)
         snprintf(&hex_buf[i * 3], 4, "%02x ", payload[i]);
     }
 
-    log_msg("Encoded payload: %s\n", hex_buf);
+    log_msg(func, "Encoded payload: %s\n", hex_buf);
 
     free(hex_buf);
 }

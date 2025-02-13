@@ -5,7 +5,11 @@
 #ifndef ACCOUNT_H
 #define ACCOUNT_H
 
-#define MAX_SIZE 256
+#include "clog.h"
+#include "globals.h"
+#include "message.h"
+#include "socket_setup.h"
+#include <netinet/in.h>
 
 struct account
 {
@@ -13,5 +17,8 @@ struct account
     char password[MAX_SIZE];
     int  uid;
 };
+
+void send_acc_login(const int *sockfd, const struct account *client);
+void send_acc_create(const int *sockfd, const struct account *client);
 
 #endif    // ACCOUNT_H

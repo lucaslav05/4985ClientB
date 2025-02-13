@@ -1,12 +1,11 @@
 //
 // Created by lucas-laviolette on 2/5/25.
 //
-#include <stdint.h>
 
 #ifndef MESSAGE_H
-    #define MESSAGE_H
+#define MESSAGE_H
 
-    #define MAX_USER 256
+#include <stdint.h>
 
 struct Message
 {
