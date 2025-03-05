@@ -51,7 +51,7 @@ void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *c
 
     total_size = MAX_HEADER_SIZE + payload_len;
 
-    buffer = malloc(total_size);
+    buffer = (uint8_t *)malloc(total_size);
     if(!buffer)
     {
         LOG_ERROR("Memory allocation failed for chat message buffer\n");

@@ -153,6 +153,12 @@ struct Message *read_from_socket(int sockfd, char *buffer)
             msg->packet_type = SYS_ERROR;
             goto cleanup;
         }
+        else if(bytes_read == 0)
+        {
+            LOG_ERROR("Connection closed by server\n");
+            msg->packet_type = SYS_ERROR;
+            goto cleanup;
+        }
         total_read += (size_t)bytes_read;
     }
 
