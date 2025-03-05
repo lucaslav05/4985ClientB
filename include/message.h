@@ -6,6 +6,7 @@
 #define MESSAGE_H
 
 #include <stdint.h>
+#include <time.h>
 
 struct Message
 {
@@ -27,6 +28,13 @@ struct ACC_Create
     char *password;
 };
 
+struct CHT_Send
+{
+    time_t timestamp;
+    char  *content;
+    char  *username;
+};
+
 typedef enum
 {
     SYS_SUCCESS       = 0x00,
@@ -35,7 +43,8 @@ typedef enum
     ACC_LOGIN_SUCCESS = 0x0B,
     ACC_LOGOUT        = 0x0C,
     ACC_CREATE        = 0x0D,
-    ACC_EDIT          = 0x0E
+    ACC_EDIT          = 0x0E,
+    CHT_SEND          = 0x0E,
 } PacketType;
 
 typedef enum

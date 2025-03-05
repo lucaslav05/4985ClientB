@@ -121,6 +121,7 @@ struct Message *read_from_socket(int sockfd, char *buffer)
     struct Message *msg = (struct Message *)malloc(sizeof(struct Message));
     uint8_t         header_buf[MAX_HEADER_SIZE];
     ssize_t         bytes_read;
+    size_t          total_read = 0;
 
     if(msg == NULL)
     {
@@ -129,20 +130,17 @@ struct Message *read_from_socket(int sockfd, char *buffer)
     }
 
     LOG_MSG("Reading the message header...\n");
-    // Read the message header
-    bytes_read = read(sockfd, header_buf, sizeof(header_buf));
-    if(bytes_read < 0)
+    // Read the message header, handling partial reads
+    while(total_read < sizeof(header_buf))
     {
-        LOG_ERROR("Failed to read message header\n");
-        msg->packet_type = SYS_ERROR;
-        goto cleanup;
-    }
-    if((size_t)bytes_read < sizeof(header_buf))
-    {
-        LOG_ERROR("Incomplete message header received\n");
-        LOG_ERROR("Header payload: %s\n", header_buf);
-        msg->packet_type = SYS_ERROR;
-        goto cleanup;
+        bytes_read = read(sockfd, header_buf + total_read, sizeof(header_buf) - total_read);
+        if(bytes_read < 0)
+        {
+            LOG_ERROR("Failed to read message header\n");
+            msg->packet_type = SYS_ERROR;
+            goto cleanup;
+        }
+        total_read += (size_t)bytes_read;
     }
 
     LOG_MSG("Decoding the header...\n");

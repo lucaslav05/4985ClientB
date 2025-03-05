@@ -69,19 +69,19 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
             const struct ACC_Login *acc          = (const struct ACC_Login *)data;
             size_t                  username_len = strlen(acc->username);
             size_t                  password_len = strlen(acc->password);
-            size_t                  total_len    = username_len + password_len + 1;    // +1 for separator
 
             LOG_MSG("Encoding UTF8STRING payload...\n");
             LOG_MSG("Username: %s, Password: %s\n", acc->username, acc->password);
 
-            // Encode tag and length
-            *ptr++ = (uint8_t)UTF8STRING;
-            *ptr++ = (uint8_t)total_len;
-
-            // Copy username and password with a separator (e.g., ':')
+            // Encode username field
+            *ptr++ = (uint8_t)UTF8STRING;      // Tag
+            *ptr++ = (uint8_t)username_len;    // Length
             memcpy(ptr, acc->username, username_len);
             ptr += username_len;
-            *ptr++ = ':';    // Separator
+
+            // Encode password field
+            *ptr++ = (uint8_t)UTF8STRING;      // Tag
+            *ptr++ = (uint8_t)password_len;    // Length
             memcpy(ptr, acc->password, password_len);
             ptr += password_len;
 

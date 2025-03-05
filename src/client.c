@@ -3,6 +3,7 @@
 //
 
 #include "account.h"
+#include "chat.h"
 #include "clog.h"
 #include "globals.h"
 #include "message.h"
@@ -24,6 +25,7 @@ int main(void)
     struct Message    *response_msg;
     struct account     client;
     char               buffer[BUFFER];
+    char               chat_input[BUFFER];
     struct timespec    ts;
 
     ts.tv_sec  = FIXED_UPDATE / NANO;
@@ -54,6 +56,10 @@ int main(void)
     printf("Enter username: ");
     scanf("%49s", client.username);
     strncpy(client.password, getpass("Enter password: "), MAX_SIZE);
+
+    while(getchar() != '\n')
+    {
+    }
 
     LOG_MSG("Sending account login...\n");
     send_acc_login(&sockfd, &client);
@@ -96,6 +102,49 @@ int main(void)
         default:
             LOG_ERROR("Unknown response from server: 0x%02X\n", response_msg->packet_type);
             break;
+    }
+
+    // --- Chat Loop ---
+    // Allow the user to type messages until they type "logout".
+
+    while(1)
+    {
+        struct Message  chat_msg;
+        struct CHT_Send chat;
+
+        printf("Enter message (or type 'logout' to exit): ");
+        if(!fgets(chat_input, sizeof(chat_input), stdin))
+        {
+            break;    // Exit on input error or EOF
+        }
+        // Remove trailing newline
+        chat_input[strcspn(chat_input, "\n")] = '\0';
+
+        if(strcmp(chat_input, "logout") == 0)
+        {
+            // Build logout message.
+            struct Message logout_msg;
+            logout_msg.packet_type      = ACC_LOGOUT;
+            logout_msg.protocol_version = 1;    // protocol version used for logout (or update as needed)
+            logout_msg.sender_id        = 0;    // Replace with actual assigned ID if available
+            logout_msg.payload_length   = 0;
+
+            LOG_MSG("Sending logout message...\n");
+            write_to_socket(sockfd, &logout_msg, NULL, 0);
+            LOG_MSG("Logged out.\n");
+            break;
+        }
+        // Build and send chat message.
+        chat_msg.packet_type      = CHT_SEND;    // Use packet type defined for chat messages
+        chat_msg.protocol_version = 1;
+        chat_msg.sender_id        = 0;    // Replace with assigned user ID if available
+        // payload_length will be set inside send_chat_message
+
+        chat.timestamp = time(NULL);
+        chat.content   = chat_input;
+        chat.username  = client.username;
+
+        send_chat_message(sockfd, &chat_msg, &chat);
     }
 
     LOG_MSG("Username: %s\n", client.username);
