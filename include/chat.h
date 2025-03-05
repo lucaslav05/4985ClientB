@@ -10,6 +10,6 @@
 #include "message.h"
 #include "socket_setup.h"
 
-void send_chat_message(int sockfd, const struct Message *msg, const struct CHT_Send *chat);
+void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat);
 
 #endif    // CHAT_H

@@ -22,7 +22,7 @@
 
 // The send_chat_message function builds a chat payload manually according to the protocol:
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
-void send_chat_message(int sockfd, const struct Message *msg, const struct CHT_Send *chat)
+void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat)
 {
     char      time_str[TIME_SIZE];    // "YYYYMMDDhhmmssZ" is 15 characters plus a null terminator
     size_t    timestamp_len;
@@ -58,7 +58,13 @@ void send_chat_message(int sockfd, const struct Message *msg, const struct CHT_S
 
     // Encode the header into the buffer.
     // (Header: 1 byte packet type, 1 byte protocol version, 2 bytes sender_id, 2 bytes payload length)
+
+    LOG_MSG("Calculated Payload Length: %zu\n", payload_len);
+
+    msg->payload_length = (uint16_t)payload_len;
     encode_header(buffer, msg);
+
+    LOG_MSG("Encoding Payload Length: %u\n", msg->payload_length);
 
     ptr = buffer + MAX_HEADER_SIZE;
 

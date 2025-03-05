@@ -5,7 +5,7 @@
 #ifndef CLIENT_GLOBALS_H
 #define CLIENT_GLOBALS_H
 
-#define PORT 55629
+#define PORT 49095
 #define IPV4 "10.0.0.182"
 #define MAX_HEADER_SIZE 6
 #define ENCODING_OVERHEAD 20
