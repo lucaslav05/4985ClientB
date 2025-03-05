@@ -127,7 +127,7 @@ int main(void)
             // Build logout message.
             struct Message logout_msg;
             logout_msg.packet_type      = ACC_LOGOUT;
-            logout_msg.protocol_version = 1;                       // protocol version used for logout (or update as needed)
+            logout_msg.protocol_version = 2;                       // protocol version used for logout (or update as needed)
             logout_msg.sender_id        = (uint16_t)client.uid;    // Replace with actual assigned ID if available
             logout_msg.payload_length   = 0;
 
@@ -138,7 +138,7 @@ int main(void)
         }
         // Build and send chat message.
         chat_msg.packet_type      = CHT_SEND;    // Use packet type defined for chat messages
-        chat_msg.protocol_version = 1;
+        chat_msg.protocol_version = 2;
         chat_msg.sender_id        = 0;    // Replace with assigned user ID if available
         // payload_length will be set inside send_chat_message
 
