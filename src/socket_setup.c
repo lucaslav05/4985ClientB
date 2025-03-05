@@ -54,11 +54,13 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     // For example, if the message type is ACC_LOGIN, we use SEQUENCE.
     switch(msg->packet_type)
     {
+        case ACC_LOGOUT:
+            tag = NUL;
+            break;
         case ACC_LOGIN:
         case SYS_SUCCESS:
         case SYS_ERROR:
         case ACC_LOGIN_SUCCESS:
-        case ACC_LOGOUT:
         case ACC_CREATE:
         case ACC_EDIT:
             tag = UTF8STRING;
@@ -70,6 +72,11 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
     LOG_MSG("Encoding the payload...\n");
     // Call encode_payload() to encode the payload into our temporary buffer.
     encode_payload(encoded_payload, tag, payload, &encoded_payload_size);
+
+    if(tag == NUL)
+    {
+        encoded_payload_size = 0;
+    }
 
     LOG_MSG("Updating the total size to include the header and the encoded payload...\n");
     // Now update the total size to be the header plus the encoded payload.
@@ -92,11 +99,17 @@ void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_
 
     LOG_MSG("Copying the encoded payload into the buffer after the header...\n");
     // Copy the encoded payload into the buffer after the header.
-    memcpy(buffer + header_size, encoded_payload, encoded_payload_size);
+    if(encoded_payload_size != 0)
+    {
+        memcpy(buffer + header_size, encoded_payload, encoded_payload_size);
+    }
 
     // Log the original and encoded payloads.
-    LOG_MSG("Payload: %.*s\n", (int)encoded_payload_size, encoded_payload);
-    LOG_PAYLOAD_HEX(encoded_payload, encoded_payload_size);
+    if(tag != NUL)
+    {
+        LOG_MSG("Payload: %.*s\n", (int)encoded_payload_size, encoded_payload);
+        LOG_PAYLOAD_HEX(encoded_payload, encoded_payload_size);
+    }
 
     LOG_MSG("Sending the complete message over the socket...\n");
     // Send the complete message over the socket.

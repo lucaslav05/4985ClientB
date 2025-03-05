@@ -111,6 +111,8 @@ int main(void)
     {
         struct Message  chat_msg;
         struct CHT_Send chat;
+        uint8_t         readBuffer[BUFFER];
+        ssize_t         bytes_received;
 
         printf("Enter message (or type 'logout' to exit): ");
         if(!fgets(chat_input, sizeof(chat_input), stdin))
@@ -125,8 +127,8 @@ int main(void)
             // Build logout message.
             struct Message logout_msg;
             logout_msg.packet_type      = ACC_LOGOUT;
-            logout_msg.protocol_version = 1;    // protocol version used for logout (or update as needed)
-            logout_msg.sender_id        = 0;    // Replace with actual assigned ID if available
+            logout_msg.protocol_version = 1;                       // protocol version used for logout (or update as needed)
+            logout_msg.sender_id        = (uint16_t)client.uid;    // Replace with actual assigned ID if available
             logout_msg.payload_length   = 0;
 
             LOG_MSG("Sending logout message...\n");
@@ -145,6 +147,19 @@ int main(void)
         chat.username  = client.username;
 
         send_chat_message(sockfd, &chat_msg, &chat);
+
+        // --- Call read_chat_message to display received message ---
+        bytes_received = recv(sockfd, readBuffer, sizeof(readBuffer), 0);
+
+        if(bytes_received > 0)
+        {
+            read_chat_message(readBuffer);
+        }
+        else if(bytes_received < 0)
+        {
+            LOG_ERROR("Failed to receive message from server\n");
+            break;
+        }
     }
 
     LOG_MSG("Username: %s\n", client.username);

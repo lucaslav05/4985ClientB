@@ -109,6 +109,13 @@ void log_payload_hex(const char *func, const uint8_t *payload, size_t size)
     // Each byte requires 3 characters: 2 for the hex representation and 1 for space
     size_t hex_buf_size = 3 * size + 1;
     char  *hex_buf      = (char *)malloc(hex_buf_size);
+
+    if(payload == NULL)
+    {
+        free(hex_buf);
+        return;
+    }
+
     if(hex_buf == NULL)
     {
         log_error(func, "Memory allocation failed for hex buffer\n");

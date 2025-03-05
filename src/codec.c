@@ -110,6 +110,10 @@ void encode_payload(uint8_t *buffer, Tags tag, const void *data, size_t *payload
             break;
 
         case NUL:
+            *payload_size = 0;    // Ensure logout messages have a size of 0
+            LOG_MSG("Encoding empty NUL payload for logout...\n");
+            return;
+
         case ENUMERATED:
         case UTCTIME:
         case GENERALIZEDTIME:

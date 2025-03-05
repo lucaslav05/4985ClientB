@@ -19,6 +19,8 @@
 #endif
 
 #define TIME_SIZE 16
+#define NAME_SIZE 256
+#define CONTENT_SIZE 1024
 
 // The send_chat_message function builds a chat payload manually according to the protocol:
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
@@ -98,4 +100,69 @@ void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *c
         LOG_MSG("Chat message sent (size: %zu bytes)\n", total_size);
     }
     free(buffer);
+}
+
+void read_chat_message(uint8_t *buffer)
+{
+    uint8_t  *ptr = buffer;
+    uint8_t   tag;
+    uint8_t   len;
+    struct tm tm_info;
+    time_t    timestamp;
+    char      username[NAME_SIZE];      // Buffer to hold the username
+    char      content[CONTENT_SIZE];    // Buffer to hold the chat content
+
+    // The first part is the header, so we skip it (MAX_HEADER_SIZE is defined earlier).
+    ptr += MAX_HEADER_SIZE;
+
+    // Read timestamp (GeneralizedTime TLV)
+    tag = *ptr++;
+    len = *ptr++;
+    if(tag == GENERALIZEDTIME)
+    {
+        char time_str[TIME_SIZE];    // Buffer to hold the formatted time string
+        memcpy(time_str, ptr, len);
+        time_str[len] = '\0';    // Null-terminate the string
+        ptr += len;
+        // Convert the timestamp string to time_t
+        strptime(time_str, "%Y%m%d%H%M%SZ", &tm_info);
+        timestamp = mktime(&tm_info);
+    }
+    else
+    {
+        LOG_ERROR("Expected GeneralizedTime tag for timestamp, got %d\n", tag);
+        return;
+    }
+
+    // Read message content (UTF8STRING TLV)
+    tag = *ptr++;
+    len = *ptr++;
+    if(tag == UTF8STRING)
+    {
+        memcpy(content, ptr, len);
+        content[len] = '\0';    // Null-terminate the string
+        ptr += len;
+    }
+    else
+    {
+        LOG_ERROR("Expected UTF8STRING tag for content, got %d\n", tag);
+        return;
+    }
+
+    // Read username (UTF8STRING TLV)
+    tag = *ptr++;
+    len = *ptr++;
+    if(tag == UTF8STRING)
+    {
+        memcpy(username, ptr, len);
+        username[len] = '\0';    // Null-terminate the string
+    }
+    else
+    {
+        LOG_ERROR("Expected UTF8STRING tag for username, got %d\n", tag);
+        return;
+    }
+
+    // Display the parsed message
+    printf("[%s] %s: %s\n", ctime(&timestamp), username, content);
 }

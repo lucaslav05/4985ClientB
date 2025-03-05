@@ -44,7 +44,7 @@ typedef enum
     ACC_LOGOUT        = 0x0C,
     ACC_CREATE        = 0x0D,
     ACC_EDIT          = 0x0E,
-    CHT_SEND          = 0x0E,
+    CHT_SEND          = 0x14,
 } PacketType;
 
 typedef enum
