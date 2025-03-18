@@ -58,10 +58,11 @@ void draw_boxes(struct window *window_box, struct box *chat_box, struct box *tex
     );
 
     // Draw borders and refresh
-    box(text_box->box, 0, 0);
     box(chat_box->box, 0, 0);
-    wrefresh(text_box->box);
+    box(text_box->box, 0, 0);
+
     wrefresh(chat_box->box);
+    wrefresh(text_box->box);
     refresh();
 
     // Clear the screen and redraw if the window has changed

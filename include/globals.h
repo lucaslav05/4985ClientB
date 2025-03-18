@@ -15,7 +15,7 @@
 #define MAX_SIZE 256
 #define TLV 4
 #define NANO 1000000000
-#define FPS 1
+#define FPS 60
 #define FIXED_UPDATE (NANO / FPS)
 
 #endif    // CLIENT_GLOBALS_H
