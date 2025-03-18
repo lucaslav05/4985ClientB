@@ -5,6 +5,26 @@
 #ifndef CLIENT_GUI_H
 #define CLIENT_GUI_H
 
+#include <curses.h>
 
+struct window
+{
+    int  old_x;
+    int  old_y;
+    int  new_x;
+    int  new_y;
+    bool changed;
+};
+
+struct box
+{
+    WINDOW *box;
+    int     max_x;
+    int     min_x;
+    int     max_y;
+    int     min_y;
+};
+
+void draw_boxes(struct window *window_box, struct box *chat_box, struct box *text_box);
 
 #endif    // CLIENT_GUI_H
