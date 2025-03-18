@@ -31,11 +31,11 @@ void draw_boxes(struct window *window_box, struct box *chat_box, struct box *tex
         delwin(text_box->box);
     }
 
-    // Calculate dimensions for the chat box (top half)
-    chat_box->max_x = window_box->new_x - 1;    // Full width of the screen
-    chat_box->max_y = window_box->new_y / 2;    // Top half height
-    chat_box->min_x = 1;                        // Start at the left edge
-    chat_box->min_y = 1;                        // Start at the top edge
+    // Calculate dimensions for the chat box
+    chat_box->max_x = window_box->new_x;        // Full width of the screen
+    chat_box->max_y = window_box->new_y - 3;    // Use remaining height
+    chat_box->min_x = 0;                        // Start at the left edge
+    chat_box->min_y = 0;                        // Start at the top edge
 
     // Create the chat box window
     chat_box->box = newwin(chat_box->max_y - chat_box->min_y,    // Height of the chat box
@@ -44,25 +44,27 @@ void draw_boxes(struct window *window_box, struct box *chat_box, struct box *tex
                            chat_box->min_x                       // Start column
     );
 
-    // Calculate dimensions for the text box (bottom half)
-    text_box->max_x = window_box->new_x - 1;    // Full width of the screen
-    text_box->max_y = window_box->new_y - 1;    // Bottom half height
-    text_box->min_x = 1;                        // Start at the left edge
-    text_box->min_y = window_box->new_y / 2;    // Start just below the chat box
+    // Calculate dimensions for the text box
+    text_box->max_x = window_box->new_x;        // Full width of the screen
+    text_box->max_y = window_box->new_y;        // Bottom half height
+    text_box->min_x = 0;                        // Start at the left edge
+    text_box->min_y = window_box->new_y - 3;    // Start 3 lines from the bottom
 
     // Create the text box window
-    text_box->box = newwin(text_box->max_y - text_box->min_y,    // Height of the text box
+    text_box->box = newwin(3,                                    // Height of the text box
                            text_box->max_x - text_box->min_x,    // Width of the text box
                            text_box->min_y,                      // Start row
                            text_box->min_x                       // Start column
     );
 
+    // Draw borders and refresh
     box(text_box->box, 0, 0);
     box(chat_box->box, 0, 0);
     wrefresh(text_box->box);
     wrefresh(chat_box->box);
     refresh();
-    //  Clear the screen and redraw if the window has changed
+
+    // Clear the screen and redraw if the window has changed
     if(window_box->changed)
     {
         LOG_MSG("resizing window...\n");
