@@ -25,6 +25,8 @@ struct box
     int     min_y;
 };
 
+void draw_chat_box(const struct window *window_box, struct box *chat_box);
+void draw_text_box(const struct window *window_box, struct box *text_box);
 void draw_boxes(struct window *window_box, struct box *chat_box, struct box *text_box);
 
 #endif    // CLIENT_GUI_H
