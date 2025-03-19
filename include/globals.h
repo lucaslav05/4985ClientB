@@ -5,8 +5,14 @@
 #ifndef CLIENT_GLOBALS_H
 #define CLIENT_GLOBALS_H
 
-#define PORT 44233
-#define IPV4 "192.168.0.137"
+#define PORT 8081
+#define IPV4 "127.0.0.1"
+#define MAX_IP_REQUEST_SIZE 2
+#define IP_MAX_CHARS 16
+#define IP_BASE 10
+#define PORT_BASE 10
+#define IP_MAX 255
+
 #define MAX_HEADER_SIZE 6
 #define ENCODING_OVERHEAD 20
 #define BUFFER 1024
@@ -15,7 +21,7 @@
 #define MAX_SIZE 256
 #define TLV 4
 #define NANO 1000000000
-#define FPS 600
+#define FPS 1
 #define FIXED_UPDATE (NANO / FPS)
 
 #endif    // CLIENT_GLOBALS_H

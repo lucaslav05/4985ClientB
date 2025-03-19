@@ -20,13 +20,12 @@
 
 int main(void)
 {
-    int                sockfd;
-    struct sockaddr_in serveraddr;
-    struct Message    *response_msg;
-    struct account     client;
-    char               buffer[BUFFER];
-    char               chat_input[BUFFER];
-    struct timespec    ts;
+    int             sockfd;
+    struct Message *response_msg;
+    struct account  client;
+    char            buffer[BUFFER];
+    char            chat_input[BUFFER];
+    struct timespec ts;
 
     ts.tv_sec  = FIXED_UPDATE / NANO;
     ts.tv_nsec = FIXED_UPDATE % NANO;
@@ -37,20 +36,7 @@ int main(void)
     LOG_MSG("Port: %d\n", PORT);
     LOG_MSG("Buffer Size: %d\n", BUFFER);
 
-    LOG_MSG("Creating socket...\n");
-    if(create_socket(&sockfd) == -1)
-    {
-        LOG_ERROR("Creating socket failed\n");
-        exit(EXIT_FAILURE);
-    }
-
-    LOG_MSG("Binding socket...\n");
-    if(bind_socket(sockfd, &serveraddr, IPV4, PORT) == -1)
-    {
-        LOG_ERROR("Binding socket failed\n");
-        close(sockfd);
-        exit(EXIT_FAILURE);
-    }
+    sockfd = get_active_server_ip(buffer, IPV4, PORT);
 
     LOG_MSG("Prompting login...!\n");
     printf("Enter username: ");

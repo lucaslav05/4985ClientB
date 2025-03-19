@@ -4,6 +4,59 @@
 #include "socket_setup.h"
 #include "clog.h"
 
+int get_active_server_ip(char *ip_buffer, const char *ipv4, uint16_t port)
+{
+    int                sockfd;
+    int                serverfd;
+    struct sockaddr_in server_addr;
+    unsigned char      request[MAX_IP_REQUEST_SIZE] = {CLIENT_GETIP, PROTOCOL_VERSION};
+    unsigned char      response[MAX_SIZE];    // Buffer to handle variable length response
+    ssize_t            bytes_received;
+
+    // Create socket
+    LOG_MSG("Creating socket for server manager...\n");
+    if(create_socket(&sockfd) != 0)
+    {
+        return -1;
+    }
+
+    // Use bind_socket to establish the connection
+    LOG_MSG("Binding socket for server manager...\n");
+    if(bind_socket(sockfd, &server_addr, ipv4, port) != 0)
+    {
+        close(sockfd);
+        return -1;
+    }
+
+    // Send request
+    LOG_MSG("Sending IP request...\n");
+    if(send(sockfd, request, sizeof(request), 0) != sizeof(request))
+    {
+        LOG_ERROR("Request Active IP failed...\n");
+        close(sockfd);
+        return -1;
+    }
+
+    // Receive response
+    LOG_MSG("Receving response...\n");
+    bytes_received = recv(sockfd, response, sizeof(response), 0);
+    if(bytes_received <= 0)
+    {
+        LOG_ERROR("Receive response failed...\n");
+        close(sockfd);
+        return -1;
+    }
+
+    // Handle response
+    serverfd = handle_response(response, bytes_received, ip_buffer, port);
+    if(serverfd != 0)
+    {
+        return -1;
+    }
+
+    return serverfd;
+}
+
 int create_socket(int *sockfd)
 {
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -23,7 +76,7 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
     serveraddr->sin_addr.s_addr = inet_addr(ipv4);
     serveraddr->sin_port        = htons(port);
 
-    if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
+    if(bind(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
         LOG_ERROR("Connection with the server failed...\n");
         return -1;
@@ -31,6 +84,206 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
 
     LOG_MSG("Connected to the server..\n");
     return 0;
+}
+
+int handle_response(const unsigned char *response, ssize_t bytes_received, char *ip_buffer, uint16_t port)
+{
+    int                serverfd;
+    struct sockaddr_in server_addr;
+    int                server_online;
+    int                ip_length;
+    int                port_length;
+    char               port_str[MAX_HEADER_SIZE] = {0};
+    int                offset                    = 0;
+
+    // Check the message format
+
+    if(bytes_received < offset + 3 || response[offset] != BOOLEAN)
+    {
+        LOG_ERROR("Invalid message format...\n");
+        return -1;
+    }
+
+    // Check the active server
+    offset += 2;    // Skip tag (1 byte) and length (1 byte)
+    if(response[offset] != MAN_RETURNIP)
+    {    // Expected TRUE for active server (0x01)
+        LOG_MSG("Server is not active now...\n");
+        return -1;
+    }
+    offset += 1;    // Move to next field
+
+    // Check the protocol version format
+    if(bytes_received < offset + 3 || response[offset] != INTEGER)
+    {
+        LOG_ERROR("Invalid message format...\n");
+        return -1;
+    }
+    offset += 2;    // Skip tag (1 byte) and length (1 byte)
+
+    // Check the protocol version value
+    if(response[offset] != PROTOCOL_VERSION)
+    {    // Check protocol version
+        LOG_MSG("Unsupported protocol version...\n");
+        return -1;
+    }
+    offset += 1;    // Move to next field
+
+    // Check the serverOnline format
+    if(bytes_received < offset + 3 || response[offset] != BOOLEAN)
+    {
+        LOG_ERROR("Invalid serverOnline format...\n");
+        return -1;
+    }
+    offset += 2;    // Skip tag (1 byte) and length (1 byte)
+
+    // Check serverOnline value (0x01 for online, 0x00 for offline)
+    server_online = response[offset];
+    offset += 1;    // Move to next field
+
+    if(server_online == 0x00)
+    {
+        // No active server, set IP buffer and port to empty values
+        ip_buffer[0] = '\0';
+        LOG_MSG("No active IP and port was found...\n");
+        return 0;
+    }
+
+    // Check activeServerIp (UTF8STRING)
+    if(bytes_received < offset + 3 || response[offset] != UTF8STRING)
+    {
+        LOG_ERROR("Invalid activeServerIp format...\n");
+        return -1;
+    }
+    offset += 2;    // Skip tag (1 byte) and length (1 byte)
+
+    // Get the length of the IP address
+    ip_length = response[offset];
+    if(ip_length + offset + 1 > bytes_received)
+    {
+        LOG_ERROR("Invalid IP length...\n");
+        return -1;
+    }
+    offset += 1;                                                        // Move to next byte after length
+    memcpy(ip_buffer, &response[(size_t)offset], (size_t)ip_length);    // Copy the IP string into ip_buffer
+    ip_buffer[ip_length] = '\0';                                        // Null-terminate the IP string
+    offset += ip_length;                                                // Move past the IP string
+
+    // Validate IP address
+    if(!is_valid_ip(ip_buffer))
+    {
+        LOG_ERROR("Invalid IP address: %s...\n", ip_buffer);
+        return -1;
+    }
+
+    // Check activeServerPort (UTF8STRING)
+    if(bytes_received < offset + 3 || response[offset] != UTF8STRING)
+    {
+        LOG_ERROR("Invalid activeServerPort format...\n");
+        return -1;
+    }
+    offset += 2;    // Skip tag (1 byte) and length (1 byte)
+
+    // Get the length of the port string
+    port_length = response[offset];
+    if(port_length + offset + 1 > bytes_received)
+    {
+        LOG_ERROR("Invalid Port length...\n");
+        return -1;
+    }
+    offset += 1;                                                         // Move to next byte after length
+    memcpy(port_str, &response[(size_t)offset], (size_t)port_length);    // Copy the port string
+    port = convert_port(port_str);                                       // Convert the port string to a port number
+
+    // Validate Port number
+    if(port == EXIT_FAILURE)
+    {
+        LOG_ERROR("Invalid port number: %s...\n", port_str);
+        return -1;
+    }
+
+    // Create socket
+    LOG_MSG("Creating socket for server manager...\n");
+    if(create_socket(&serverfd) != 0)
+    {
+        return -1;
+    }
+
+    // Use bind_socket to establish the connection
+    LOG_MSG("Binding socket for server manager...\n");
+    if(bind_socket(serverfd, &server_addr, ip_buffer, port) != 0)
+    {
+        close(serverfd);
+        return -1;
+    }
+
+    return serverfd;    // Successfully parsed the response
+}
+
+uint16_t convert_port(const char *port_str)
+{
+    char         *endptr;
+    unsigned long port_ulong;    // The port as an unsigned long
+
+    if(port_str == NULL)
+    {
+        LOG_ERROR("Port is null...\n");
+        exit(EXIT_FAILURE);
+    }
+
+    port_ulong = strtoul(port_str, &endptr, PORT_BASE);
+
+    // TODO: error checking
+    // see client version
+
+    if(*endptr != '\0')
+    {
+        LOG_ERROR("Invalid Port format...\n");
+        return EXIT_FAILURE;
+    }
+
+    if(port_ulong == UINT16_MAX)
+    {
+        LOG_ERROR("Port number is out of range...\n");
+        return EXIT_FAILURE;
+    }
+
+    return (uint16_t)port_ulong;
+}
+
+bool is_valid_ip(const char *ip)
+{
+    const char *token;
+    char       *saveptr;
+    char        ip_copy[IP_MAX_CHARS];
+    int         count;
+
+    // Spit the IP into four parts.
+    strlcpy(ip_copy, ip, IP_MAX_CHARS);
+    count = 0;
+    token = strtok_r(ip_copy, ".", &saveptr);
+    while(token != NULL)
+    {
+        char *endptr;
+        long  num;
+        count++;
+        num = strtol(token, &endptr, IP_BASE);
+
+        if(*endptr != '\0' || num < 0 || num > IP_MAX)
+        {
+            return false;
+        }
+
+        token = strtok_r(NULL, ".", &saveptr);
+    }
+
+    // Return if the address has exactly four parts
+    if(count != 4)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size)
