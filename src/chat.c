@@ -21,6 +21,8 @@
 #define TIME_SIZE 16
 #define NAME_SIZE 256
 #define CONTENT_SIZE 1024
+#define GEN_TIM 15
+#define UTC_TIM 13
 
 // The send_chat_message function builds a chat payload manually according to the protocol:
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
@@ -102,66 +104,70 @@ void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *c
     free(buffer);
 }
 
-void read_chat_message(uint8_t *buffer)
+void read_chat_message(const uint8_t *buffer)
 {
-    uint8_t  *ptr = buffer;
-    uint8_t   tag;
-    uint8_t   len;
-    struct tm tm_info;
-    time_t    timestamp;
-    char      username[NAME_SIZE];      // Buffer to hold the username
-    char      content[CONTENT_SIZE];    // Buffer to hold the chat content
+    const char *format = NULL;
+    uint8_t     ts_len;
+    uint8_t     content_len;
+    uint8_t     username_len;
+    time_t      timestamp;
+    char        time_str[TIME_SIZE];
+    char        content[CONTENT_SIZE];
+    char        username[NAME_SIZE];
+    struct tm   tm_info;
+    int         pos = MAX_HEADER_SIZE;    // Skip header
 
-    // The first part is the header, so we skip it (MAX_HEADER_SIZE is defined earlier).
-    ptr += MAX_HEADER_SIZE;
-
-    // Read timestamp (GeneralizedTime TLV)
-    tag = *ptr++;
-    len = *ptr++;
-    if(tag == GENERALIZEDTIME)
+    // --- Process timestamp TLV ---
+    pos++;
+    ts_len = buffer[pos++];
+    if(ts_len >= TIME_SIZE)
     {
-        char time_str[TIME_SIZE];    // Buffer to hold the formatted time string
-        memcpy(time_str, ptr, len);
-        time_str[len] = '\0';    // Null-terminate the string
-        ptr += len;
-        // Convert the timestamp string to time_t
-        strptime(time_str, "%Y%m%d%H%M%SZ", &tm_info);
-        timestamp = mktime(&tm_info);
+        LOG_ERROR("Timestamp length too long: %u\n", ts_len);
+        return;
+    }
+    memcpy(time_str, &buffer[pos], ts_len);
+    time_str[ts_len] = '\0';
+    pos += ts_len;
+
+    // Choose format based on length.
+    // 15 characters: "YYYYMMDDhhmmssZ" (GeneralizedTime)
+    // 13 characters: "YYMMDDhhmmssZ" (UTCTime)
+    // Not sure which is exactly the correct to use so put both LMAO
+    if(ts_len == GEN_TIM)
+    {
+        format = "%Y%m%d%H%M%SZ";
+    }
+    else if(ts_len == UTC_TIM)
+    {
+        format = "%y%m%d%H%M%SZ";
     }
     else
     {
-        LOG_ERROR("Expected GeneralizedTime tag for timestamp, got %d\n", tag);
+        LOG_ERROR("Unexpected timestamp length: %u\n", ts_len);
         return;
     }
 
-    // Read message content (UTF8STRING TLV)
-    tag = *ptr++;
-    len = *ptr++;
-    if(tag == UTF8STRING)
-    {
-        memcpy(content, ptr, len);
-        content[len] = '\0';    // Null-terminate the string
-        ptr += len;
-    }
-    else
-    {
-        LOG_ERROR("Expected UTF8STRING tag for content, got %d\n", tag);
-        return;
-    }
+    // --- Process content TLV ---
+    pos++;    // Skip content tag
+    content_len = buffer[pos++];
+    memcpy(content, &buffer[pos], content_len);
+    content[content_len] = '\0';
+    pos += content_len;
 
-    // Read username (UTF8STRING TLV)
-    tag = *ptr++;
-    len = *ptr++;
-    if(tag == UTF8STRING)
+    // --- Process username TLV ---
+    pos++;    // Skip username tag
+    username_len = buffer[pos++];
+    memcpy(username, &buffer[pos], username_len);
+    username[username_len] = '\0';
+
+    // Parse the timestamp using the determined format
+    memset(&tm_info, 0, sizeof(tm_info));
+    if(strptime(time_str, format, &tm_info) == NULL)
     {
-        memcpy(username, ptr, len);
-        username[len] = '\0';    // Null-terminate the string
-    }
-    else
-    {
-        LOG_ERROR("Expected UTF8STRING tag for username, got %d\n", tag);
+        LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
         return;
     }
+    timestamp = mktime(&tm_info);
 
     // Display the parsed message
     printf("[%s] %s: %s\n", ctime(&timestamp), username, content);
