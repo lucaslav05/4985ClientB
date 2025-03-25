@@ -27,7 +27,7 @@ void send_acc_login(const int *sockfd, const struct account *client)
 
     LOG_MSG("Setting up message structure for login...\n");
     msg.packet_type      = ACC_LOGIN;
-    msg.protocol_version = 2;
+    msg.protocol_version = 3;
     msg.sender_id        = 0;
     msg.payload_length   = htons((uint16_t)(TLV + strlen(lgn.username) + strlen(lgn.password)));
 
@@ -62,7 +62,7 @@ void send_acc_create(const int *sockfd, const struct account *client)
 
     LOG_MSG("Setting up message structure for account creation...\n");
     msg.packet_type      = ACC_CREATE;
-    msg.protocol_version = 2;
+    msg.protocol_version = 3;
     msg.sender_id        = 0;
     msg.payload_length   = (uint16_t)(strlen(crt.username) + strlen(crt.password));
 
