@@ -64,28 +64,19 @@ void draw_boxes(struct window *window_box, struct box *chat_box, struct box *tex
 {
     // Get current terminal size
     getmaxyx(stdscr, window_box->new_y, window_box->new_x);
-    // LOG_MSG("window size %d:%d\n", window_box->new_x, window_box->new_y);
 
     // Check if the terminal size has changed
     if(window_box->new_x != window_box->old_x || window_box->new_y != window_box->old_y)
     {
         LOG_MSG("window size has changed from %d:%d to %d:%d \n", window_box->old_x, window_box->old_y, window_box->new_x, window_box->new_y);
-        window_box->changed = true;
+        erase();
     }
 
     // Update the old dimensions to track changes
     window_box->old_x = window_box->new_x;
     window_box->old_y = window_box->new_y;
 
-    // Clear the screen and redraw if the window has changed
-    if(window_box->changed)
-    {
-        LOG_MSG("resizing window...\n");
-        erase();
-        window_box->changed = false;
-    }
-
-    // Draw the individual boxes
+    // Draw boxes
     draw_chat_box(window_box, chat_box);
     draw_text_box(window_box, text_box);
 
