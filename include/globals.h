@@ -17,5 +17,9 @@
 #define NANO 1000000000
 #define FPS 120
 #define FIXED_UPDATE (NANO / FPS)
+#define MAX_MESSAGES 100
+#define BACKSPACE 127
+#define LOWERBOUND 32
+#define UPPERBOUND 126
 
 #endif    // CLIENT_GLOBALS_H

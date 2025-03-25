@@ -15,11 +15,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MAX_MESSAGES 100
-#define BACKSPACE 127
-#define LOWERBOUND 32
-#define UPPERBOUND 126
-
 int main(void)
 {
     struct box      chat_box;
