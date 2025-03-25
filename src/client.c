@@ -13,12 +13,49 @@
 #include <curses.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <pthread.h>
+#include <stdatomic.h>    // Required for atomic operations
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+static int             message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+static char            messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+
+// Thread function for receiving messages
+static void *receive_messages(void *arg)
+{
+    int  sockfd = *(int *)arg;
+    char payload_buffer[BUFFER];
+
+    while(1)
+    {
+        struct Message *received_msg = read_from_socket(sockfd, payload_buffer);
+        if(received_msg)
+        {
+            pthread_mutex_lock(&message_mutex);
+
+            // Add the payload to the messages array for display
+            if(message_count < MAX_MESSAGES)
+            {
+                strncpy(messages[message_count++], payload_buffer, sizeof(payload_buffer));
+            }
+
+            pthread_mutex_unlock(&message_mutex);
+            free(received_msg);    // Free the allocated memory for the message
+        }
+        else
+        {
+            LOG_ERROR("Error reading message from socket\n");
+            break;
+        }
+    }
+    return NULL;
+}
 
 int main(void)
 {
@@ -32,10 +69,11 @@ int main(void)
     struct box      chat_box;
     struct box      text_box;
     struct window   window_box;
-    char            messages[MAX_MESSAGES][BUFFER];    // List to store messages
-    char            input_buffer[BUFFER];
-    int             input_index   = 0;
-    int             message_count = 0;
+    // char            messages[MAX_MESSAGES][BUFFER];    // List to store messages
+    char input_buffer[BUFFER];
+    int  input_index = 0;
+    // int             message_count = 0;
+    pthread_t recv_thread;
 
     ts.tv_sec  = FIXED_UPDATE / NANO;
     ts.tv_nsec = FIXED_UPDATE % NANO;
@@ -86,6 +124,14 @@ int main(void)
     {
         case ACC_LOGIN_SUCCESS:
             LOG_MSG("Successfully logged in.\n");
+            // make new thread
+            if(pthread_create(&recv_thread, NULL, receive_messages, &sockfd) != 0)
+            {
+                LOG_ERROR("Failed to create receiving thread\n");
+                close(sockfd);
+                return EXIT_FAILURE;
+            }
+
             break;
 
         case SYS_ERROR:
@@ -133,7 +179,10 @@ int main(void)
 
     while(1)
     {
-        int ch;    // For non-blocking character input
+        int             ch;    // For non-blocking character input
+        struct Message  chat_msg;
+        struct CHT_Send chat;
+
         draw_boxes(&window_box, &chat_box, &text_box);
 
         for(int i = 0; i < message_count; i++)
@@ -164,20 +213,61 @@ int main(void)
         ch = getch();
         if(ch != ERR)    // Check if a key was pressed
         {
-            if(ch == KEY_RESIZE)    // Handle resize events
-            {
+            if(ch == KEY_RESIZE)
+            {    // Handle resize events
                 LOG_MSG("Resize detected\n");
+
+                // Clear the screen
                 clear();
+
+                // Recalculate and redraw the boxes
                 memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
                 input_index = 0;
                 draw_boxes(&window_box, &chat_box, &text_box);
+
+                // Redraw existing messages
+                pthread_mutex_lock(&message_mutex);    // Lock mutex before accessing messages[]
+                for(int i = 0; i < message_count; i++)
+                {
+                    if(message_count > chat_box.max_y - 2)
+                    {
+                        // Adjust message count if overflow due to new dimensions
+                        for(int j = 0; j < message_count - 1; j++)
+                        {
+                            strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
+                        }
+                        message_count--;
+                        if(i > 0)
+                        {
+                            i--;    // Correctly adjust `i` for the outer loop
+                        }
+                    }
+
+                    mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
+                }
+                pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
+
+                refresh();    // Refresh the screen
             }
-            else if(ch == '\n')    // Enter key pressed
-            {
-                if(message_count < MAX_MESSAGES)    // Store message if there's room
+
+            else if(ch == '\n')
+            {    // When the user presses Enter
+                if(message_count < MAX_MESSAGES)
                 {
                     strncpy(messages[message_count++], input_buffer, sizeof(input_buffer));
                     LOG_MSG("User input received: %s\n", input_buffer);
+
+                    // Build and send chat message to the server
+
+                    chat_msg.packet_type      = CHT_SEND;
+                    chat_msg.protocol_version = 3;
+                    chat_msg.sender_id        = 0;    // Replace with actual user ID
+
+                    chat.timestamp = time(NULL);
+                    chat.content   = input_buffer;
+                    chat.username  = client.username;
+
+                    send_chat_message(sockfd, &chat_msg, &chat);
                 }
                 memset(input_buffer, 0, sizeof(input_buffer));    // Clear the buffer
                 input_index = 0;
@@ -191,6 +281,10 @@ int main(void)
                 input_buffer[input_index++] = (char)ch;
             }
         }
+
+        pthread_mutex_lock(&message_mutex);
+        // Render messages in the chat box (read `messages[]`)
+        pthread_mutex_unlock(&message_mutex);
 
         // Refresh the screen and continue updating dynamically
         refresh();
@@ -279,6 +373,9 @@ int main(void)
     }*/
 
     LOG_MSG("Cleaning up and exiting...\n");
+    pthread_join(recv_thread, NULL);
+    pthread_mutex_destroy(&message_mutex);
+    endwin();    // End `ncurses` mode
     close(sockfd);
     free(response_msg);
 }
