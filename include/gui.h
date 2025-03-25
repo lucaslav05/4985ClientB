@@ -9,10 +9,11 @@
 
 struct window
 {
-    int old_x;
-    int old_y;
-    int new_x;
-    int new_y;
+    int  old_x;
+    int  old_y;
+    int  new_x;
+    int  new_y;
+    bool changed;
 };
 
 struct box

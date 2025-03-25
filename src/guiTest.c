@@ -82,9 +82,9 @@ int main(void)
             if(ch == KEY_RESIZE)    // Handle resize events
             {
                 LOG_MSG("Resize detected\n");
-                // clear();
-                // memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
-                // input_index = 0;
+                clear();
+                memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
+                input_index = 0;
                 draw_boxes(&window_box, &chat_box, &text_box);
             }
             else if(ch == '\n')    // Enter key pressed
