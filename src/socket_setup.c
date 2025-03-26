@@ -4,6 +4,71 @@
 #include "socket_setup.h"
 #include "clog.h"
 
+int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
+{
+    int                sockfd;
+    struct sockaddr_in server_addr;
+    unsigned char      request[MAX_IP_REQUEST_SIZE] = {CLIENT_GETIP, PROTOCOL_VERSION};
+    unsigned char      response[MAX_SIZE];    // Buffer to handle variable length response
+    ssize_t            bytes_received;
+
+    // Create socket for server manager
+    LOG_MSG("Creating socket for server manager...\n");
+    if(create_socket(&sockfd) != 0)
+    {
+        return -1;
+    }
+
+    // Establish the connection to the server manager
+    LOG_MSG("Connecting to the server manager...\n");
+    if(connect_socket(sockfd, &server_addr, ipv4, port) != 0)
+    {
+        close(sockfd);
+        return -1;
+    }
+
+    // Send request
+    LOG_MSG("Sending IP request...\n");
+    if(send(sockfd, request, sizeof(request), 0) != sizeof(request))
+    {
+        LOG_ERROR("Request Active IP failed...\n");
+        close(sockfd);
+        return -1;
+    }
+
+    // Receive response
+    LOG_MSG("Receving response...\n");
+    bytes_received = recv(sockfd, response, sizeof(response), 0);
+    if(bytes_received <= 0)
+    {
+        LOG_ERROR("Receive response failed...\n");
+        close(sockfd);
+        return -1;
+    }
+
+    // Print the response
+    print_response(response, bytes_received);
+
+    // Handle response - return fd of new active server
+    sockfd = handle_response(response, bytes_received, buffer, port);
+    return sockfd;
+}
+
+void print_response(const unsigned char *response, ssize_t bytes_received)
+{
+    LOG_MSG("Server Response (%zd bytes):\n", bytes_received);
+
+    for(ssize_t i = 0; i < bytes_received; i++)
+    {
+        printf("%02X ", response[i]);
+        if((i + 1) % IP_MAX_CHARS == 0)
+        {
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
+
 int create_socket(int *sockfd)
 {
     *sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -16,7 +81,7 @@ int create_socket(int *sockfd)
     return 0;
 }
 
-int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port)
+int connect_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port)
 {
     memset(serveraddr, 0, sizeof(*serveraddr));
     serveraddr->sin_family      = AF_INET;
@@ -25,12 +90,183 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
 
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
-        LOG_ERROR("Connection with the server failed...\n");
+        LOG_ERROR("Connection with the server manager failed...\n");
         return -1;
     }
 
-    LOG_MSG("Connected to the server..\n");
+    LOG_MSG("Connected to the server manager...\n");
     return 0;
+}
+
+int handle_response(const unsigned char *response, ssize_t bytes_received, char *ip_buffer, uint16_t port)
+{
+    int                sockfd;
+    int                server_online;
+    struct sockaddr_in server_addr;
+    int                offset = 0;
+    int                ip_length;
+    int                port_length;
+    char               port_str[MAX_HEADER_SIZE] = {0};
+
+    // Check the response size
+    if(bytes_received < offset + 3)
+    {
+        LOG_ERROR("Invalid response size...\n");
+        return -1;
+    }
+
+    // Check the active of server manager
+    if(response[offset] != MAN_RETURNIP)
+    {
+        LOG_ERROR("Server manager is not active now...\n");
+        return -1;
+    }
+    offset += 1;
+
+    // Check protocol version
+    if(response[offset] != PROTOCOL_VERSION)
+    {
+        LOG_ERROR("Unsupported protocol version: 0x%02X...\n", response[offset]);
+        return -1;
+    }
+    offset += 1;
+
+    // Check server status
+    server_online = response[offset];
+    offset += 1;
+
+    // If there's no active server
+    if(server_online == 0x00)
+    {
+        ip_buffer[0] = '\0';
+        LOG_MSG("No active IP and port was found...\n");
+        return 0;
+    }
+
+    // If there's active server, get the IP address length
+    ip_length = response[offset];
+    offset += 1;
+
+    // Check the length of IP
+    if(ip_length + offset > bytes_received)
+    {
+        LOG_ERROR("Invalid IP length...\n");
+        return -1;
+    }
+
+    memcpy(ip_buffer, &response[offset], (size_t)ip_length);
+    ip_buffer[ip_length] = '\0';
+    offset += ip_length;
+
+    if(!is_valid_ip(ip_buffer))
+    {
+        LOG_ERROR("Invalid IP address: %s...\n", ip_buffer);
+        return -1;
+    }
+    offset += 1;
+
+    // Get the port length
+    port_length = response[offset];
+    offset += 1;
+
+    // Check the length of port
+    if(port_length + offset > bytes_received)
+    {
+        LOG_ERROR("Invalid Port length...\n");
+        return -1;
+    }
+
+    memcpy(port_str, &response[offset], (size_t)port_length);
+    port = convert_port(port_str);
+
+    if(port == EXIT_FAILURE)
+    {
+        LOG_ERROR("Invalid port number: %s...\n", port_str);
+        return -1;
+    }
+
+    // Create socket for server manager
+    LOG_MSG("Creating socket for active manager...\n");
+    if(create_socket(&sockfd) != 0)
+    {
+        return -1;
+    }
+
+    // Establish the connection to the server manager
+    LOG_MSG("Connecting to the active server...\n");
+    if(connect_socket(sockfd, &server_addr, ip_buffer, port) != 0)
+    {
+        close(sockfd);
+        return -1;
+    }
+
+    return sockfd;
+}
+
+uint16_t convert_port(const char *port_str)
+{
+    char         *endptr;
+    unsigned long port_ulong;    // The port as an unsigned long
+
+    if(port_str == NULL)
+    {
+        LOG_ERROR("Port is null...\n");
+        exit(EXIT_FAILURE);
+    }
+
+    port_ulong = strtoul(port_str, &endptr, PORT_BASE);
+
+    // TODO: error checking
+    // see client version
+
+    if(*endptr != '\0')
+    {
+        LOG_ERROR("Invalid Port format...\n");
+        return EXIT_FAILURE;
+    }
+
+    if(port_ulong == UINT16_MAX)
+    {
+        LOG_ERROR("Port number is out of range...\n");
+        return EXIT_FAILURE;
+    }
+
+    return (uint16_t)port_ulong;
+}
+
+bool is_valid_ip(const char *ip)
+{
+    const char *token;
+    char       *saveptr;
+    char        ip_copy[IP_MAX_CHARS];
+    int         count;
+
+    // Spit the IP into four parts.
+    strlcpy(ip_copy, ip, IP_MAX_CHARS);
+    count = 0;
+    token = strtok_r(ip_copy, ".", &saveptr);
+    while(token != NULL)
+    {
+        char *endptr;
+        long  num;
+        count++;
+        num = strtol(token, &endptr, IP_BASE);
+
+        if(*endptr != '\0' || num < 0 || num > IP_MAX)
+        {
+            return false;
+        }
+
+        token = strtok_r(NULL, ".", &saveptr);
+    }
+
+    // Return if the address has exactly four parts
+    if(count != 4)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 void write_to_socket(int sockfd, struct Message *msg, const void *payload, size_t payload_size)

@@ -60,4 +60,11 @@ typedef enum
     GENERALIZEDTIME,
 } Tags;
 
+typedef enum
+{
+    CLIENT_GETIP     = 0x00,
+    MAN_RETURNIP     = 0x01,
+    PROTOCOL_VERSION = 0x03
+} IPRequest;
+
 #endif    // MESSAGE_H

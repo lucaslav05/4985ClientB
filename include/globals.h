@@ -5,8 +5,14 @@
 #ifndef CLIENT_GLOBALS_H
 #define CLIENT_GLOBALS_H
 
-#define PORT 44233
-#define IPV4 "192.168.0.137"
+#define PORT 8000 // Server manager port
+#define IPV4 "127.0.0.1" //"192.168.0.66" // Server manager IP
+#define MAX_IP_REQUEST_SIZE 2
+#define IP_MAX_CHARS 16
+#define IP_BASE 10
+#define PORT_BASE 10
+#define IP_MAX 255
+
 #define MAX_HEADER_SIZE 6
 #define ENCODING_OVERHEAD 20
 #define BUFFER 1024

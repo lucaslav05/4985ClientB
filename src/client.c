@@ -59,11 +59,10 @@ static void *receive_messages(void *arg)
 
 int main(void)
 {
-    int                sockfd;
-    struct sockaddr_in serveraddr;
-    struct Message    *response_msg;
-    struct account     client;
-    char               buffer[BUFFER];
+    int             sockfd;
+    struct Message *response_msg;
+    struct account  client;
+    char            buffer[BUFFER];
     // char               chat_input[BUFFER];
     struct timespec ts;
     struct box      chat_box;
@@ -84,19 +83,10 @@ int main(void)
     LOG_MSG("Port: %d\n", PORT);
     LOG_MSG("Buffer Size: %d\n", BUFFER);
 
-    LOG_MSG("Creating socket...\n");
-    if(create_socket(&sockfd) == -1)
+    sockfd = get_active_server_ip(buffer, IPV4, PORT);
+    if(sockfd <= 0)
     {
-        LOG_ERROR("Creating socket failed\n");
-        exit(EXIT_FAILURE);
-    }
-
-    LOG_MSG("Binding socket...\n");
-    if(bind_socket(sockfd, &serveraddr, IPV4, PORT) == -1)
-    {
-        LOG_ERROR("Binding socket failed\n");
-        close(sockfd);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     LOG_MSG("Prompting login...!\n");
