@@ -9,56 +9,18 @@
 #include "gui.h"
 #include "message.h"
 #include "socket_setup.h"
+#include "chat.h"
 #include <arpa/inet.h>
 #include <curses.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
-#include <stdatomic.h>    // Required for atomic operations
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-static int             message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
-static char            messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
-static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
-
-// Thread function for receiving messages
-static void *receive_messages(void *arg)
-{
-    int  sockfd = *(int *)arg;
-    char buffer[BUFFER];
-    char formatted_message[BUFFER];
-
-    while (1)
-    {
-        struct Message *received_msg = read_from_socket(sockfd, buffer);
-        if (received_msg)
-        {
-            pthread_mutex_lock(&message_mutex);
-
-            // Format and store the received message
-            if (message_count < MAX_MESSAGES)
-            {
-                read_chat_message((const uint8_t *)buffer, formatted_message, sizeof(formatted_message));
-                strncpy(messages[message_count++], formatted_message, sizeof(messages[0]));
-            }
-
-            pthread_mutex_unlock(&message_mutex);
-            free(received_msg); // Free the allocated memory for the message
-        }
-        else
-        {
-            LOG_ERROR("Error reading message from socket\n");
-            break;
-        }
-    }
-    return NULL;
-}
-
 
 int main(void)
 {
@@ -247,7 +209,7 @@ int main(void)
                         }
                     }
 
-                    //mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
+                    mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
                 }
                 pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
 

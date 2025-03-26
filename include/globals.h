@@ -21,5 +21,16 @@
 #define BACKSPACE 127
 #define LOWERBOUND 32
 #define UPPERBOUND 126
+#define TIME_SIZE 16
+#define NAME_SIZE 256
+#define CONTENT_SIZE 1024
+#define GEN_TIM 15
+#define UTC_TIM 13
+
+// Assume MAX_HEADER_SIZE is defined as 6 (1 byte packet type, 1 byte protocol version,
+// 2 bytes sender_id, 2 bytes payload length)
+#ifndef MAX_HEADER_SIZE
+    #define MAX_HEADER_SIZE 6
+#endif
 
 #endif    // CLIENT_GLOBALS_H

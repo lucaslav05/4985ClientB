@@ -6,13 +6,24 @@
 
 int create_socket(int *sockfd)
 {
-    *sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    int reuse = 1;
+    *sockfd   = socket(AF_INET, SOCK_STREAM, 0);
     if(*sockfd == -1)
     {
         LOG_ERROR("Socket creation failed...\n");
         return -1;
     }
     LOG_MSG("Socket successfully created..\n");
+
+    // Enable socket reuse
+    // Set reuse to true (1)
+    if(setsockopt(*sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0)
+    {
+        LOG_ERROR("Failed to set SO_REUSEADDR on socket...\n");
+        return -1;
+    }
+    LOG_MSG("SO_REUSEADDR enabled for socket..\n");
+
     return 0;
 }
 
@@ -23,6 +34,7 @@ int bind_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, ui
     serveraddr->sin_addr.s_addr = inet_addr(ipv4);
     serveraddr->sin_port        = htons(port);
 
+    // Attempt connection to the server
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
         LOG_ERROR("Connection with the server failed...\n");

@@ -6,23 +6,45 @@
 #include "clog.h"     // for logging macros
 #include "codec.h"    // for encode_header()
 #include "message.h"
+#include "globals.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
 
-// Assume MAX_HEADER_SIZE is defined as 6 (1 byte packet type, 1 byte protocol version,
-// 2 bytes sender_id, 2 bytes payload length)
-#ifndef MAX_HEADER_SIZE
-    #define MAX_HEADER_SIZE 6
-#endif
+// Thread function for receiving messages
+void *receive_messages(void *arg)
+{
+    int  sockfd = *(int *)arg;
+    char buffer[BUFFER];
+    char formatted_message[BUFFER];
 
-#define TIME_SIZE 16
-#define NAME_SIZE 256
-#define CONTENT_SIZE 1024
-#define GEN_TIM 15
-#define UTC_TIM 13
+    while (1)
+    {
+        struct Message *received_msg = read_from_socket(sockfd, buffer);
+        if (received_msg)
+        {
+            pthread_mutex_lock(&message_mutex);
+
+            // Format and store the received message
+            if (message_count < MAX_MESSAGES)
+            {
+                read_chat_message((const uint8_t *)buffer, formatted_message, sizeof(formatted_message));
+                strncpy(messages[message_count++], formatted_message, sizeof(messages[0]));
+            }
+
+            pthread_mutex_unlock(&message_mutex);
+            free(received_msg); // Free the allocated memory for the message
+        }
+        else
+        {
+            LOG_ERROR("Error reading message from socket\n");
+            break;
+        }
+    }
+    return NULL;
+}
 
 // The send_chat_message function builds a chat payload manually according to the protocol:
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
