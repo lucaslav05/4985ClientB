@@ -104,71 +104,77 @@ void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *c
     free(buffer);
 }
 
-void read_chat_message(const uint8_t *buffer)
+void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t max_len)
 {
     const char *format = NULL;
     uint8_t     ts_len;
     uint8_t     content_len;
     uint8_t     username_len;
-    time_t      timestamp;
     char        time_str[TIME_SIZE];
     char        content[CONTENT_SIZE];
     char        username[NAME_SIZE];
     struct tm   tm_info;
-    int         pos = MAX_HEADER_SIZE;    // Skip header
+    int         pos = MAX_HEADER_SIZE; // Skip header
 
     // --- Process timestamp TLV ---
-    pos++;
+    pos++; // Skip timestamp tag
     ts_len = buffer[pos++];
-    if(ts_len >= TIME_SIZE)
+    if (ts_len >= TIME_SIZE)
     {
         LOG_ERROR("Timestamp length too long: %u\n", ts_len);
+        snprintf(formatted_message, max_len, "Error: Invalid timestamp length.");
         return;
     }
     memcpy(time_str, &buffer[pos], ts_len);
     time_str[ts_len] = '\0';
     pos += ts_len;
 
-    // Choose format based on length.
-    // 15 characters: "YYYYMMDDhhmmssZ" (GeneralizedTime)
-    // 13 characters: "YYMMDDhhmmssZ" (UTCTime)
-    // Not sure which is exactly the correct to use so put both LMAO
-    if(ts_len == GEN_TIM)
-    {
+    // Determine the timestamp format
+    if (ts_len == GEN_TIM) {
         format = "%Y%m%d%H%M%SZ";
-    }
-    else if(ts_len == UTC_TIM)
-    {
+    } else if (ts_len == UTC_TIM) {
         format = "%y%m%d%H%M%SZ";
-    }
-    else
-    {
+    } else {
         LOG_ERROR("Unexpected timestamp length: %u\n", ts_len);
+        snprintf(formatted_message, max_len, "Error: Unexpected timestamp length.");
+        return;
+    }
+
+    // Parse the timestamp
+    memset(&tm_info, 0, sizeof(tm_info));
+    if (strptime(time_str, format, &tm_info) == NULL)
+    {
+        LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
+        snprintf(formatted_message, max_len, "Error: Failed to parse timestamp.");
         return;
     }
 
     // --- Process content TLV ---
-    pos++;    // Skip content tag
+    pos++; // Skip content tag
     content_len = buffer[pos++];
+    /*if (content_len >= CONTENT_SIZE)  // this gives an error no time to fix
+    {
+        LOG_ERROR("Content length too long: %u\n", content_len);
+        snprintf(formatted_message, max_len, "Error: Content too long.");
+        return;
+    }*/
     memcpy(content, &buffer[pos], content_len);
     content[content_len] = '\0';
     pos += content_len;
 
     // --- Process username TLV ---
-    pos++;    // Skip username tag
+    pos++; // Skip username tag
     username_len = buffer[pos++];
+    /*if (username_len >= NAME_SIZE) // this gives an error no time to fix
+    {
+        LOG_ERROR("Username length too long: %u\n", username_len);
+        snprintf(formatted_message, max_len, "Error: Username too long.");
+        return;
+    }*/
     memcpy(username, &buffer[pos], username_len);
     username[username_len] = '\0';
 
-    // Parse the timestamp using the determined format
-    memset(&tm_info, 0, sizeof(tm_info));
-    if(strptime(time_str, format, &tm_info) == NULL)
-    {
-        LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
-        return;
-    }
-    timestamp = mktime(&tm_info);
-
-    // Display the parsed message
-    printf("[%s] %s: %s\n", ctime(&timestamp), username, content);
+    // Format the final message
+    snprintf(formatted_message, max_len, "[%s] %s: %s", time_str, username, content);
 }
+

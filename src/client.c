@@ -30,23 +30,25 @@ static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT c
 static void *receive_messages(void *arg)
 {
     int  sockfd = *(int *)arg;
-    char payload_buffer[BUFFER];
+    char buffer[BUFFER];
+    char formatted_message[BUFFER];
 
-    while(1)
+    while (1)
     {
-        struct Message *received_msg = read_from_socket(sockfd, payload_buffer);
-        if(received_msg)
+        struct Message *received_msg = read_from_socket(sockfd, buffer);
+        if (received_msg)
         {
             pthread_mutex_lock(&message_mutex);
 
-            // Add the payload to the messages array for display
-            if(message_count < MAX_MESSAGES)
+            // Format and store the received message
+            if (message_count < MAX_MESSAGES)
             {
-                strncpy(messages[message_count++], payload_buffer, sizeof(payload_buffer));
+                read_chat_message((const uint8_t *)buffer, formatted_message, sizeof(formatted_message));
+                strncpy(messages[message_count++], formatted_message, sizeof(messages[0]));
             }
 
             pthread_mutex_unlock(&message_mutex);
-            free(received_msg);    // Free the allocated memory for the message
+            free(received_msg); // Free the allocated memory for the message
         }
         else
         {
@@ -56,6 +58,7 @@ static void *receive_messages(void *arg)
     }
     return NULL;
 }
+
 
 int main(void)
 {
@@ -203,6 +206,7 @@ int main(void)
             }
 
             mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
+
         }
 
         // Display the input prompt in the text box
@@ -243,7 +247,7 @@ int main(void)
                         }
                     }
 
-                    mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
+                    //mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
                 }
                 pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
 

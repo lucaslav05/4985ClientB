@@ -11,6 +11,6 @@
 #include "socket_setup.h"
 
 void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat);
-void read_chat_message(const uint8_t *buffer);
+void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t max_len);
 
 #endif    // CHAT_H
