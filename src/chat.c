@@ -174,12 +174,6 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     // --- Process content TLV ---
     pos++; // Skip content tag
     content_len = buffer[pos++];
-    /*if (content_len >= CONTENT_SIZE)  // this gives an error no time to fix
-    {
-        LOG_ERROR("Content length too long: %u\n", content_len);
-        snprintf(formatted_message, max_len, "Error: Content too long.");
-        return;
-    }*/
     memcpy(content, &buffer[pos], content_len);
     content[content_len] = '\0';
     pos += content_len;
@@ -187,12 +181,6 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     // --- Process username TLV ---
     pos++; // Skip username tag
     username_len = buffer[pos++];
-    /*if (username_len >= NAME_SIZE) // this gives an error no time to fix
-    {
-        LOG_ERROR("Username length too long: %u\n", username_len);
-        snprintf(formatted_message, max_len, "Error: Username too long.");
-        return;
-    }*/
     memcpy(username, &buffer[pos], username_len);
     username[username_len] = '\0';
 

@@ -5,8 +5,8 @@
 #ifndef CLIENT_GLOBALS_H
 #define CLIENT_GLOBALS_H
 
-#define PORT 44233
-#define IPV4 "192.168.0.137"
+#define PORT 48309
+#define IPV4 "192.168.0.81"
 #define MAX_HEADER_SIZE 6
 #define ENCODING_OVERHEAD 20
 #define BUFFER 1024
@@ -17,7 +17,7 @@
 #define NANO 1000000000
 #define FPS 120
 #define FIXED_UPDATE (NANO / FPS)
-#define MAX_MESSAGES 100
+#define MAX_MESSAGES 102400
 #define BACKSPACE 127
 #define LOWERBOUND 32
 #define UPPERBOUND 126
