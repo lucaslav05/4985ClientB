@@ -86,7 +86,7 @@ int main(void)
     sockfd = get_active_server_ip(buffer, IPV4, PORT);
     if(sockfd <= 0)
     {
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     LOG_MSG("Prompting login...!\n");

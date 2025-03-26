@@ -18,7 +18,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <termios.h>
-#include <time.h>
 #include <unistd.h>
 
 int             get_active_server_ip(char *buffer, const char *ipv4, uint16_t port);

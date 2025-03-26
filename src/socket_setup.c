@@ -28,7 +28,7 @@ int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
     }
 
     // Send request
-    LOG_MSG("Sending IP request...\n");
+    LOG_MSG("Sending IP request to the server manager...\n");
     if(send(sockfd, request, sizeof(request), 0) != sizeof(request))
     {
         LOG_ERROR("Request Active IP failed...\n");
@@ -37,7 +37,7 @@ int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
     }
 
     // Receive response
-    LOG_MSG("Receving response...\n");
+    LOG_MSG("Receving response from the server manager...\n");
     bytes_received = recv(sockfd, response, sizeof(response), 0);
     if(bytes_received <= 0)
     {
@@ -56,7 +56,7 @@ int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
 
 void print_response(const unsigned char *response, ssize_t bytes_received)
 {
-    LOG_MSG("Server Response (%zd bytes):\n", bytes_received);
+    printf("Server Response (%zd bytes): ", bytes_received);
 
     for(ssize_t i = 0; i < bytes_received; i++)
     {
@@ -90,11 +90,11 @@ int connect_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4,
 
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
-        LOG_ERROR("Connection with the server manager failed...\n");
+        LOG_ERROR("Connecting failed...\n");
         return -1;
     }
 
-    LOG_MSG("Connected to the server manager...\n");
+    LOG_MSG("Connecting successfully...\n");
     return 0;
 }
 
@@ -108,12 +108,12 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
     int                port_length;
     char               port_str[MAX_HEADER_SIZE] = {0};
 
-    // Check the response size
-    if(bytes_received < offset + 3)
-    {
-        LOG_ERROR("Invalid response size...\n");
-        return -1;
-    }
+    // // Check the response size
+    // if(bytes_received < offset + 3)
+    // {
+    //     LOG_ERROR("Invalid response size...\n");
+    //     return -1;
+    // }
 
     // Check the active of server manager
     if(response[offset] != MAN_RETURNIP)
