@@ -46,26 +46,9 @@ int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
         return -1;
     }
 
-    // Print the response
-    print_response(response, bytes_received);
-
     // Handle response - return fd of new active server
     sockfd = handle_response(response, bytes_received, buffer, port);
     return sockfd;
-}
-
-void print_response(const unsigned char *response, ssize_t bytes_received)
-{
-    printf("Server Response (%zd bytes): ", bytes_received);
-
-    for(ssize_t i = 0; i < bytes_received; i++)
-    {
-        printf("%02X ", response[i]);
-        if((i + 1) % IP_MAX_CHARS == 0)
-        {
-            printf("\n");
-        }
-    }
 }
 
 int create_socket(int *sockfd)

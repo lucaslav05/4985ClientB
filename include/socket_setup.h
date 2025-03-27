@@ -21,7 +21,6 @@
 #include <unistd.h>
 
 int             get_active_server_ip(char *buffer, const char *ipv4, uint16_t port);
-void            print_response(const unsigned char *response, ssize_t bytes_received);
 int             create_socket(int *sockfd);
 int             connect_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4, uint16_t port);
 int             handle_response(const unsigned char *response, ssize_t bytes_received, char *ip_buffer, uint16_t port);
