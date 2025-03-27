@@ -6,7 +6,7 @@
 #define CLIENT_GLOBALS_H
 
 #define PORT 8000 // Server manager port
-#define IPV4 "192.168.0.88" // Server manager IP
+#define IPV4 "192.168.1.131" // Server manager IP
 #define MAX_IP_REQUEST_SIZE 2
 #define IP_MAX_CHARS 16
 #define IP_BASE 10

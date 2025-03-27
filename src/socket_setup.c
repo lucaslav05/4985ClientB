@@ -66,7 +66,6 @@ void print_response(const unsigned char *response, ssize_t bytes_received)
             printf("\n");
         }
     }
-    printf("\n");
 }
 
 int create_socket(int *sockfd)
@@ -108,13 +107,6 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
     int                port_length;
     char               port_str[MAX_HEADER_SIZE] = {0};
 
-    // // Check the response size
-    // if(bytes_received < offset + 3)
-    // {
-    //     LOG_ERROR("Invalid response size...\n");
-    //     return -1;
-    // }
-
     // Check the active of server manager
     if(response[offset] != MAN_RETURNIP)
     {
@@ -136,14 +128,22 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
     offset += 1;
 
     // If there's no active server
-    if(server_online == 0x00)
+    if(server_online == NOACTIVE_SERVER)
     {
         ip_buffer[0] = '\0';
         LOG_MSG("No active IP and port was found...\n");
         return 0;
     }
 
-    // If there's active server, get the IP address length
+    // If there's an active server, check the UTF-8 string type
+    if(response[offset] != UTF8)
+    {
+        LOG_ERROR("Unexpected data type for IP...\n");
+        return -1;
+    }
+    offset += 1;
+
+    // Get the IP address length
     ip_length = response[offset];
     offset += 1;
 
@@ -154,13 +154,22 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
         return -1;
     }
 
+    // Extract the IP address
     memcpy(ip_buffer, &response[offset], (size_t)ip_length);
     ip_buffer[ip_length] = '\0';
     offset += ip_length;
 
+    // Check the valid of IP address
     if(!is_valid_ip(ip_buffer))
     {
         LOG_ERROR("Invalid IP address: %s...\n", ip_buffer);
+        return -1;
+    }
+
+    // Check for UTF-8 string for port
+    if(response[offset] != UTF8)
+    {
+        LOG_ERROR("Unexpected data type for Port...\n");
         return -1;
     }
     offset += 1;
@@ -169,7 +178,7 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
     port_length = response[offset];
     offset += 1;
 
-    // Check the length of port
+    // Check port length validation
     if(port_length + offset > bytes_received)
     {
         LOG_ERROR("Invalid Port length...\n");
@@ -177,13 +186,17 @@ int handle_response(const unsigned char *response, ssize_t bytes_received, char 
     }
 
     memcpy(port_str, &response[offset], (size_t)port_length);
-    port = convert_port(port_str);
+    port_str[port_length] = '\0';
 
+    // Convert port
+    port = convert_port(port_str);
     if(port == EXIT_FAILURE)
     {
         LOG_ERROR("Invalid port number: %s...\n", port_str);
         return -1;
     }
+
+    LOG_MSG("Server Active Found: %s:%d\n", ip_buffer, port);
 
     // Create socket for server manager
     LOG_MSG("Creating socket for active manager...\n");
