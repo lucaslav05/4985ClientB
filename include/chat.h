@@ -16,7 +16,7 @@ static char            messages[MAX_MESSAGES][BUFFER];               // NOLINT c
 static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 
 void *receive_messages(void *arg);
-void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat);
-void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t max_len);
+void  send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat);
+void  read_chat_message(const uint8_t *buffer, char *formatted_message, size_t max_len);
 
 #endif    // CHAT_H

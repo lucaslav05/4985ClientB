@@ -9,7 +9,6 @@
 #include "gui.h"
 #include "message.h"
 #include "socket_setup.h"
-#include "chat.h"
 #include <arpa/inet.h>
 #include <curses.h>
 #include <netdb.h>
@@ -29,13 +28,13 @@ int main(void)
     struct Message    *response_msg;
     struct account     client;
     char               buffer[BUFFER];
-    struct timespec ts;
-    struct box      chat_box;
-    struct box      text_box;
-    struct window   window_box;
-    char input_buffer[BUFFER];
-    int  input_index = 0;
-    pthread_t recv_thread;
+    struct timespec    ts;
+    struct box         chat_box;
+    struct box         text_box;
+    struct window      window_box;
+    char               input_buffer[BUFFER];
+    int                input_index = 0;
+    pthread_t          recv_thread;
 
     ts.tv_sec  = FIXED_UPDATE / NANO;
     ts.tv_nsec = FIXED_UPDATE % NANO;
@@ -161,7 +160,6 @@ int main(void)
             }
 
             mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
-
         }
 
         // Display the input prompt in the text box
@@ -257,6 +255,7 @@ int main(void)
     close(sockfd);
     free(response_msg);
 }
+
 /*while(1)
 {
     struct Message  chat_msg;

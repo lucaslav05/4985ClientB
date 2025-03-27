@@ -5,37 +5,159 @@
 #include "chat.h"
 #include "clog.h"     // for logging macros
 #include "codec.h"    // for encode_header()
-#include "message.h"
 #include "globals.h"
+#include "message.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <time.h>
 
-// Thread function for receiving messages
 void *receive_messages(void *arg)
 {
     int  sockfd = *(int *)arg;
-    char buffer[BUFFER];
-    char formatted_message[BUFFER];
+    char payload_buffer[BUFFER];
 
-    while (1)
+    while(1)
     {
-        struct Message *received_msg = read_from_socket(sockfd, buffer);
-        if (received_msg)
+        struct Message *received_msg = read_from_socket(sockfd, payload_buffer);
+        if(received_msg)
         {
+            // Lock the mutex to safely access shared messages array
+            const char *format = NULL;
+            uint8_t     ts_len;
+            uint16_t    content_len;
+            uint8_t     username_len;
+            time_t      timestamp;
+            char        time_str[TIME_SIZE];
+            char        content[CONTENT_SIZE];
+            char        username[NAME_SIZE];
+            struct tm   tm_info;
+            int         pos = MAX_HEADER_SIZE;    // Skip header
+            char        formatted_message[BUFFER];
             pthread_mutex_lock(&message_mutex);
 
-            // Format and store the received message
-            if (message_count < MAX_MESSAGES)
+            // --- Process timestamp TLV ---
+            pos++;
+            ts_len = (uint8_t)payload_buffer[pos++];
+            if(ts_len >= TIME_SIZE)
             {
-                read_chat_message((const uint8_t *)buffer, formatted_message, sizeof(formatted_message));
+                LOG_ERROR("Timestamp length too long: %u\n", ts_len);
+                pthread_mutex_unlock(&message_mutex);
+                free(received_msg);    // Free the allocated memory for the message
+                continue;
+            }
+            memcpy(time_str, &payload_buffer[pos], ts_len);
+            time_str[ts_len] = '\0';
+            pos += ts_len;
+
+            // Determine timestamp format
+            if(ts_len == GEN_TIM)
+            {
+                format = "%Y%m%d%H%M%SZ";
+            }
+            else if(ts_len == UTC_TIM)
+            {
+                format = "%y%m%d%H%M%SZ";
+            }
+            else
+            {
+                LOG_ERROR("Unexpected timestamp length: %u\n", ts_len);
+                pthread_mutex_unlock(&message_mutex);
+                free(received_msg);
+                continue;
+            }
+
+            // Parse the timestamp
+            memset(&tm_info, 0, sizeof(tm_info));
+            if(strptime(time_str, format, &tm_info) == NULL)
+            {
+                LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
+                pthread_mutex_unlock(&message_mutex);
+                free(received_msg);
+                continue;
+            }
+            timestamp = mktime(&tm_info);
+
+            // --- Process content TLV ---
+            pos++;    // Skip content tag
+            content_len = (uint8_t)payload_buffer[pos++];
+            if(content_len >= CONTENT_SIZE)
+            {
+                LOG_ERROR("Content length too long: %u\n", content_len);
+                pthread_mutex_unlock(&message_mutex);
+                free(received_msg);
+                continue;
+            }
+            memcpy(content, &payload_buffer[pos], content_len);
+            content[content_len] = '\0';
+            pos += content_len;
+
+            // --- Process username TLV ---
+            pos++;    // Skip username tag
+            username_len = (uint8_t)payload_buffer[pos++];
+            if(username_len >= NAME_SIZE - 1)
+            {
+                LOG_ERROR("Username length too long: %u\n", username_len);
+                pthread_mutex_unlock(&message_mutex);
+                free(received_msg);
+                continue;
+            }
+            memcpy(username, &payload_buffer[pos], username_len);
+            username[username_len] = '\0';
+
+            // Format the final message
+            snprintf(formatted_message, BUFFER, "[%s] %s: %s", ctime(&timestamp), username, content);
+
+            // Add the formatted message to the messages array
+            if(message_count < MAX_MESSAGES)
+            {
                 strncpy(messages[message_count++], formatted_message, sizeof(messages[0]));
+            }
+            else
+            {
+                // If the messages array is full, shift all messages up and add the new one
+                for(int i = 0; i < MAX_MESSAGES - 1; i++)
+                {
+                    strncpy(messages[i], messages[i + 1], sizeof(messages[0]));
+                }
+                strncpy(messages[MAX_MESSAGES - 1], formatted_message, sizeof(messages[0]));
             }
 
             pthread_mutex_unlock(&message_mutex);
-            free(received_msg); // Free the allocated memory for the message
+            free(received_msg);    // Free the allocated memory for the message
+        }
+        else
+        {
+            LOG_ERROR("Error reading message from socket\n");
+            break;
+        }
+    }
+
+    return NULL;
+}
+
+// Thread function for receiving messages
+/*void *receive_messages(void *arg)
+{
+    int  sockfd = *(int *)arg;
+    char payload_buffer[BUFFER];
+
+    while(1)
+    {
+        struct Message *received_msg = read_from_socket(sockfd, payload_buffer);
+        if(received_msg)
+        {
+            pthread_mutex_lock(&message_mutex);
+
+            // Add the payload to the messages array for display
+            if(message_count < MAX_MESSAGES)
+            {
+                strncpy(messages[message_count++], payload_buffer, sizeof(payload_buffer));
+            }
+
+            pthread_mutex_unlock(&message_mutex);
+            free(received_msg);    // Free the allocated memory for the message
         }
         else
         {
@@ -44,7 +166,7 @@ void *receive_messages(void *arg)
         }
     }
     return NULL;
-}
+}*/
 
 // The send_chat_message function builds a chat payload manually according to the protocol:
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
@@ -136,12 +258,12 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     char        content[CONTENT_SIZE];
     char        username[NAME_SIZE];
     struct tm   tm_info;
-    int         pos = MAX_HEADER_SIZE; // Skip header
+    int         pos = MAX_HEADER_SIZE;    // Skip header
 
     // --- Process timestamp TLV ---
-    pos++; // Skip timestamp tag
+    pos++;    // Skip timestamp tag
     ts_len = buffer[pos++];
-    if (ts_len >= TIME_SIZE)
+    if(ts_len >= TIME_SIZE)
     {
         LOG_ERROR("Timestamp length too long: %u\n", ts_len);
         snprintf(formatted_message, max_len, "Error: Invalid timestamp length.");
@@ -152,11 +274,16 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     pos += ts_len;
 
     // Determine the timestamp format
-    if (ts_len == GEN_TIM) {
+    if(ts_len == GEN_TIM)
+    {
         format = "%Y%m%d%H%M%SZ";
-    } else if (ts_len == UTC_TIM) {
+    }
+    else if(ts_len == UTC_TIM)
+    {
         format = "%y%m%d%H%M%SZ";
-    } else {
+    }
+    else
+    {
         LOG_ERROR("Unexpected timestamp length: %u\n", ts_len);
         snprintf(formatted_message, max_len, "Error: Unexpected timestamp length.");
         return;
@@ -164,7 +291,7 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
 
     // Parse the timestamp
     memset(&tm_info, 0, sizeof(tm_info));
-    if (strptime(time_str, format, &tm_info) == NULL)
+    if(strptime(time_str, format, &tm_info) == NULL)
     {
         LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
         snprintf(formatted_message, max_len, "Error: Failed to parse timestamp.");
@@ -172,14 +299,14 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     }
 
     // --- Process content TLV ---
-    pos++; // Skip content tag
+    pos++;    // Skip content tag
     content_len = buffer[pos++];
     memcpy(content, &buffer[pos], content_len);
     content[content_len] = '\0';
     pos += content_len;
 
     // --- Process username TLV ---
-    pos++; // Skip username tag
+    pos++;    // Skip username tag
     username_len = buffer[pos++];
     memcpy(username, &buffer[pos], username_len);
     username[username_len] = '\0';
@@ -187,4 +314,3 @@ void read_chat_message(const uint8_t *buffer, char *formatted_message, size_t ma
     // Format the final message
     snprintf(formatted_message, max_len, "[%s] %s: %s", time_str, username, content);
 }
-
