@@ -50,14 +50,14 @@ typedef enum
 typedef enum
 {
     BOOLEAN = 1,
-    INTEGER,
+    INTEGER = 2,
     NUL             = 5,
     ENUMERATED      = 10,
     UTF8STRING      = 12,
     SEQUENCE        = 16,
     PRINTABLESTRING = 19,
     UTCTIME         = 23,
-    GENERALIZEDTIME,
+    GENERALIZEDTIME = 24,
 } Tags;
 
 typedef enum

@@ -107,7 +107,7 @@ void log_error(const char *func, const char *format, ...)
 void log_payload_hex(const char *func, const uint8_t *payload, size_t size)
 {
     // Each byte requires 3 characters: 2 for the hex representation and 1 for space
-    size_t hex_buf_size = 3 * size + 1;
+    size_t hex_buf_size = (3 * size) + 1;
     char  *hex_buf      = (char *)malloc(hex_buf_size);
 
     if(payload == NULL)
