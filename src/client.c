@@ -230,6 +230,21 @@ int main(void)
             {
                 LOG_MSG("Successfully created account\n");
                 send_acc_login(&sockfd, &client);
+
+                response_msg = read_from_socket(sockfd, buffer);
+
+                while(!response_msg)
+                {
+                    nanosleep(&ts, NULL);
+                    response_msg = read_from_socket(sockfd, buffer);
+                }
+
+                if(pthread_create(&recv_thread, NULL, receive_messages, &sockfd) != 0)
+                {
+                    LOG_ERROR("Failed to create receiving thread\n");
+                    close(sockfd);
+                    return EXIT_FAILURE;
+                }
                 break;
             }
             LOG_ERROR("Account creation failed\n");

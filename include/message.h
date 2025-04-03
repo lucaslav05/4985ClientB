@@ -49,8 +49,8 @@ typedef enum
 
 typedef enum
 {
-    BOOLEAN = 1,
-    INTEGER = 2,
+    BOOLEAN         = 1,
+    INTEGER         = 2,
     NUL             = 5,
     ENUMERATED      = 10,
     UTF8STRING      = 12,
