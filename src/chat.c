@@ -18,7 +18,6 @@
     #define MAX_HEADER_SIZE 6
 #endif
 
-#define TIME_SIZE 16
 #define NAME_SIZE 256
 #define CONTENT_SIZE 1024
 #define GEN_TIM 15

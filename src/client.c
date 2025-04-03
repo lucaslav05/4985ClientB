@@ -26,23 +26,114 @@ static int             message_count = 0;                            // NOLINT c
 static char            messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 
+void format_message(const uint8_t *buffer, char *output, size_t out_size);
+
+void format_message(const uint8_t *buffer, char *output, size_t out_size)
+{
+    uint8_t     ts_len;
+    uint8_t     content_len;
+    uint8_t     username_len;
+    char        content[CONTENT_SIZE];
+    char        username[NAME_SIZE];
+    char        time_str[TIME_SIZE];
+    char        time_buf[TIME_BUFFER];    // Buffer to hold the formatted time string
+    const char *format = NULL;
+    struct tm   tm_info;
+    // time_t      timestamp;
+    int pos = 0;    // Skip header
+
+    // --- Process timestamp TLV ---
+    pos++;
+    ts_len = buffer[pos++];    // Read timestamp length
+    if(ts_len >= TIME_SIZE)
+    {
+        LOG_ERROR("Timestamp length too long: %u\n", ts_len);
+        return;
+    }
+    memcpy(time_str, &buffer[pos], ts_len);
+    time_str[ts_len] = '\0';
+    pos += ts_len;
+
+    // Choose format based on length.
+    // For example:
+    // 15 characters: "YYYYMMDDhhmmssZ" (GeneralizedTime)
+    // 13 characters: "YYMMDDhhmmssZ" (UTCTime)
+    if(ts_len == GEN_TIM)
+    {
+        format = "%Y%m%d%H%M%SZ";
+    }
+    else if(ts_len == UTC_TIM)
+    {
+        format = "%y%m%d%H%M%SZ";
+    }
+    else
+    {
+        LOG_ERROR("Unexpected timestamp length: %u\n", ts_len);
+        snprintf(output, out_size, "Error: unexpected timestamp length");
+        return;
+    }
+
+    memset(&tm_info, 0, sizeof(tm_info));
+    if(strptime(time_str, format, &tm_info) == NULL)
+    {
+        LOG_ERROR("Failed to parse timestamp: %s with format %s\n", time_str, format);
+        snprintf(output, out_size, "Error: invalid timestamp");
+        return;
+    }
+    // timestamp = mktime(&tm_info);
+    // Format the time into a human-readable string (e.g., "2025-01-30 12:34:56")
+    if(strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &tm_info) == 0)
+    {
+        LOG_ERROR("Failed to format timestamp\n");
+        snprintf(output, out_size, "Error: failed to format timestamp");
+        return;
+    }
+
+    // --- Process content TLV ---
+    pos++;                          // Skip content tag (expected tag: 0x0C)
+    content_len = buffer[pos++];    // Read content length
+    memcpy(content, &buffer[pos], content_len);
+    content[content_len] = '\0';    // Null-terminate the content string
+    pos += content_len;
+
+    // --- Process username TLV ---
+    pos++;                           // Skip username tag (expected tag: 0x0C)
+    username_len = buffer[pos++];    // Read username length
+    memcpy(username, &buffer[pos], username_len);
+    username[username_len] = '\0';    // Null-terminate the username string
+
+    // Format the final string as: [timestamp] username: content
+    snprintf(output, out_size, "[%s] %s: %s", time_buf, username, content);
+    LOG_MSG("Formatted message: %s\n", output);
+}
+
 // Thread function for receiving messages
 static void *receive_messages(void *arg)
 {
-    int  sockfd = *(int *)arg;
-    char payload_buffer[BUFFER];
+    int     sockfd = *(int *)arg;
+    uint8_t payload_buffer[BUFFER];
 
     while(1)
     {
-        struct Message *received_msg = read_from_socket(sockfd, payload_buffer);
+        struct Message *received_msg = read_from_socket(sockfd, (char *)payload_buffer);
         if(received_msg)
         {
             pthread_mutex_lock(&message_mutex);
 
+            LOG_MSG("Received raw bytes: ");
+            for(int i = 0; i < (int)sizeof(payload_buffer); i++)
+            {
+                if(payload_buffer[i] != 0)    // Don't print trailing zeros (which may just pad)
+                {
+                    LOG_MSG("%02X ", payload_buffer[i]);
+                }
+            }
+            LOG_MSG("\n");
+
             // Add the payload to the messages array for display
             if(message_count < MAX_MESSAGES)
             {
-                strncpy(messages[message_count++], payload_buffer, sizeof(payload_buffer));
+                strncpy(messages[message_count++], (char *)payload_buffer, sizeof(payload_buffer));
             }
 
             pthread_mutex_unlock(&message_mutex);
@@ -177,6 +268,7 @@ int main(void)
 
         for(int i = 0; i < message_count; i++)
         {
+            char formatted[BUFFER];
             if(message_count > chat_box.max_y - 2)
             {
                 // Remove the oldest message by shifting all messages up
@@ -192,7 +284,10 @@ int main(void)
                 }
             }
 
-            mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
+            format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
+            // mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
+            mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
+            refresh();
         }
 
         // Display the input prompt in the text box
@@ -244,7 +339,7 @@ int main(void)
             {    // When the user presses Enter
                 if(message_count < MAX_MESSAGES)
                 {
-                    strncpy(messages[message_count++], input_buffer, sizeof(input_buffer));
+                    // strncpy(messages[message_count++], input_buffer, sizeof(input_buffer));
                     LOG_MSG("User input received: %s\n", input_buffer);
 
                     // Build and send chat message to the server
