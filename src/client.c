@@ -104,7 +104,6 @@ void format_message(const uint8_t *buffer, char *output, size_t out_size)
 
     // Format the final string as: [timestamp] username: content
     snprintf(output, out_size, "[%s] %s: %s", time_buf, username, content);
-    LOG_MSG("Formatted message: %s\n", output);
 }
 
 // Thread function for receiving messages
