@@ -14,6 +14,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
+#include <signal.h>
 #include <stdatomic.h>    // Required for atomic operations
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,11 +23,23 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-static int             message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
-static char            messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
-static pthread_mutex_t message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+static volatile sig_atomic_t logout_flag   = 0;                            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+static int                   message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+static char                  messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
+static pthread_mutex_t       message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 
 void format_message(const uint8_t *buffer, char *output, size_t out_size);
+void handle_sigint(int sig);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
+void handle_sigint(int sig)
+{
+    logout_flag = 1;
+}
+
+#pragma GCC diagnostic pop
 
 void format_message(const uint8_t *buffer, char *output, size_t out_size)
 {
@@ -40,7 +53,7 @@ void format_message(const uint8_t *buffer, char *output, size_t out_size)
     const char *format = NULL;
     struct tm   tm_info;
     // time_t      timestamp;
-    int pos = 0;    // Skip header
+    int pos = 0;
 
     // --- Process timestamp TLV ---
     pos++;
@@ -149,10 +162,11 @@ static void *receive_messages(void *arg)
 
 int main(void)
 {
-    int             sockfd;
-    struct Message *response_msg;
-    struct account  client;
-    char            buffer[BUFFER];
+    int              sockfd;
+    struct Message  *response_msg;
+    struct account   client;
+    char             buffer[BUFFER];
+    struct sigaction sa;
     // char               chat_input[BUFFER];
     struct timespec ts;
     struct box      chat_box;
@@ -162,7 +176,26 @@ int main(void)
     char input_buffer[BUFFER];
     int  input_index = 0;
     // int             message_count = 0;
-    pthread_t recv_thread;
+    pthread_t recv_thread    = 0;
+    int       payload_offset = MAX_HEADER_SIZE;
+
+#if defined(__clang__)
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
+#endif
+    sa.sa_handler = handle_sigint;
+#if defined(__clang__)
+    #pragma clang diagnostic pop
+#endif
+
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    if(sigaction(SIGINT, &sa, NULL) == -1)
+    {
+        LOG_ERROR("Error: cannot handle SIGINT\n");
+        exit(EXIT_FAILURE);
+    }
 
     ts.tv_sec  = FIXED_UPDATE / NANO;
     ts.tv_nsec = FIXED_UPDATE % NANO;
@@ -204,6 +237,28 @@ int main(void)
     {
         case ACC_LOGIN_SUCCESS:
             LOG_MSG("Successfully logged in.\n");
+
+            if(buffer[payload_offset] == 0x02)
+            {
+                uint8_t uid_len = (uint8_t)buffer[payload_offset + 1];
+                if(uid_len == 2)
+                {
+                    // Read the user id from the following 2 bytes.
+                    uint16_t uid_network_order;
+                    memcpy(&uid_network_order, &buffer[payload_offset + 2], sizeof(uid_network_order));
+                    client.uid = ntohs(uid_network_order);
+                    LOG_MSG("Stored user id: %d\n", client.uid);
+                }
+                else
+                {
+                    LOG_ERROR("Unexpected user id length: %u\n", uid_len);
+                }
+            }
+            else
+            {
+                LOG_ERROR("Unexpected payload tag: 0x%02X\n", buffer[payload_offset]);
+            }
+
             // make new thread
             if(pthread_create(&recv_thread, NULL, receive_messages, &sockfd) != 0)
             {
@@ -277,6 +332,22 @@ int main(void)
         int             ch;    // For non-blocking character input
         struct Message  chat_msg;
         struct CHT_Send chat;
+
+        if(logout_flag)
+        {
+            // Build and send logout message
+            struct Message logout_msg;
+            logout_msg.packet_type      = ACC_LOGOUT;
+            logout_msg.protocol_version = 3;
+            logout_msg.sender_id        = (uint16_t)client.uid;
+            logout_msg.payload_length   = 0;
+
+            LOG_MSG("Sending logout message due to SIGINT...\n");
+            write_to_socket(sockfd, &logout_msg, NULL, 0);
+
+            // Break out of loop to perform cleanup
+            break;
+        }
 
         draw_boxes(&window_box, &chat_box, &text_box);
 
@@ -360,7 +431,7 @@ int main(void)
 
                     chat_msg.packet_type      = CHT_SEND;
                     chat_msg.protocol_version = 3;
-                    chat_msg.sender_id        = 0;    // Replace with actual user ID
+                    chat_msg.sender_id        = client.uid;    // Replace with actual user ID
 
                     chat.timestamp = time(NULL);
                     chat.content   = input_buffer;
@@ -387,7 +458,6 @@ int main(void)
 
         // Refresh the screen and continue updating dynamically
         refresh();
-        nanosleep(&ts, NULL);
     }
 
     /*while(1)
@@ -477,4 +547,5 @@ int main(void)
     endwin();    // End `ncurses` mode
     close(sockfd);
     free(response_msg);
+    return 0;
 }
