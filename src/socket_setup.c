@@ -55,7 +55,7 @@ int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
 
 int create_socket(int *sockfd)
 {
-    *sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    *sockfd = socket(AF_INET, SOCK_STREAM, 0);    // NOLINT(android-cloexec-socket)
     if(*sockfd == -1)
     {
         LOG_ERROR("Socket creation failed...\n");
