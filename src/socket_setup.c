@@ -4,6 +4,8 @@
 #include "socket_setup.h"
 #include "clog.h"
 
+#define WAITING_TIME 5
+
 int get_active_server_ip(char *buffer, const char *ipv4, uint16_t port)
 {
     int                sockfd;
@@ -72,8 +74,16 @@ int connect_socket(int sockfd, struct sockaddr_in *serveraddr, const char *ipv4,
 
     if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
     {
-        LOG_ERROR("Connecting failed...\n");
-        return -1;
+        // Sleep for 5 seconds
+        LOG_ERROR("Initial connection failed, retrying in 5 seconds...\n");
+        sleep(WAITING_TIME);
+
+        // Connect again
+        if(connect(sockfd, (struct sockaddr *)serveraddr, sizeof(*serveraddr)) != 0)
+        {
+            LOG_ERROR("Retry failed. Could not connect.\n");
+            return -1;
+        }
     }
 
     LOG_MSG("Connecting successfully...\n");

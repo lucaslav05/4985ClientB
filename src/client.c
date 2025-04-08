@@ -431,7 +431,7 @@ int main(void)
 
                     chat_msg.packet_type      = CHT_SEND;
                     chat_msg.protocol_version = 3;
-                    chat_msg.sender_id        = client.uid;    // Replace with actual user ID
+                    chat_msg.sender_id        = (uint16_t)client.uid;    // Replace with actual user ID
 
                     chat.timestamp = time(NULL);
                     chat.content   = input_buffer;
