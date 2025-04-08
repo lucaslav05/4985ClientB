@@ -262,153 +262,6 @@ int main(void)
                 return EXIT_FAILURE;
             }
 
-            // --- Chat Loop ---
-            // Allow the user to type messages until they type "logout".
-
-            // printf("Enter message (or type 'logout' to exit): ");
-
-            initscr();
-            noecho();
-            cbreak();
-            nodelay(stdscr, TRUE);    // Enable non-blocking input
-            keypad(stdscr, TRUE);     // Allow special key input (like KEY_RESIZE)
-
-            memset(input_buffer, 0, sizeof(input_buffer));    // Initialize the input buffer
-            memset(messages, 0, sizeof(messages));
-
-            while(1)
-            {
-                int             ch;    // For non-blocking character input
-                struct Message  chat_msg;
-                struct CHT_Send chat;
-
-                if(logout_flag)
-                {
-                    // Build and send logout message
-                    struct Message logout_msg;
-                    logout_msg.packet_type      = ACC_LOGOUT;
-                    logout_msg.protocol_version = 3;
-                    logout_msg.sender_id        = (uint16_t)client.uid;
-                    logout_msg.payload_length   = 0;
-
-                    LOG_MSG("Sending logout message due to SIGINT...\n");
-                    write_to_socket(sockfd, &logout_msg, NULL, 0);
-
-                    // Break out of loop to perform cleanup
-                    break;
-                }
-
-                draw_boxes(&window_box, &chat_box, &text_box);
-
-                for(int i = 0; i < message_count; i++)
-                {
-                    char formatted[BUFFER];
-                    if(message_count > chat_box.max_y - 2)
-                    {
-                        // Remove the oldest message by shifting all messages up
-                        for(int j = 0; j < message_count - 1; j++)
-                        {
-                            strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
-                        }
-                        message_count--;    // Decrease the message count
-
-                        if(i > 0)
-                        {
-                            i--;    // Correctly adjust `i` for the outer loop
-                        }
-                    }
-
-                    format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
-                    // mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
-                    mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
-                    refresh();
-                }
-
-                // Display the input prompt in the text box
-                mvprintw(text_box.max_y - 2, text_box.min_x + 2, "Type here: %s", input_buffer);
-                curs_set(1);    // Enable cursor visibility
-
-                // Read input without blocking
-                ch = getch();
-                if(ch != ERR)    // Check if a key was pressed
-                {
-                    if(ch == KEY_RESIZE)
-                    {    // Handle resize events
-                        LOG_MSG("Resize detected\n");
-
-                        // Clear the screen
-                        clear();
-
-                        // Recalculate and redraw the boxes
-                        memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
-                        input_index = 0;
-                        draw_boxes(&window_box, &chat_box, &text_box);
-
-                        // Redraw existing messages
-                        pthread_mutex_lock(&message_mutex);    // Lock mutex before accessing messages[]
-                        for(int i = 0; i < message_count; i++)
-                        {
-                            if(message_count > chat_box.max_y - 2)
-                            {
-                                // Adjust message count if overflow due to new dimensions
-                                for(int j = 0; j < message_count - 1; j++)
-                                {
-                                    strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
-                                }
-                                message_count--;
-                                if(i > 0)
-                                {
-                                    i--;    // Correctly adjust `i` for the outer loop
-                                }
-                            }
-
-                            mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
-                        }
-                        pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
-
-                        refresh();    // Refresh the screen
-                    }
-
-                    else if(ch == '\n')
-                    {    // When the user presses Enter
-                        if(message_count < MAX_MESSAGES)
-                        {
-                            // strncpy(messages[message_count++], input_buffer, sizeof(input_buffer));
-                            LOG_MSG("User input received: %s\n", input_buffer);
-
-                            // Build and send chat message to the server
-
-                            chat_msg.packet_type      = CHT_SEND;
-                            chat_msg.protocol_version = 3;
-                            chat_msg.sender_id        = (uint16_t)client.uid;    // Replace with actual user ID
-
-                            chat.timestamp = time(NULL);
-                            chat.content   = input_buffer;
-                            chat.username  = client.username;
-
-                            send_chat_message(sockfd, &chat_msg, &chat);
-                        }
-                        memset(input_buffer, 0, sizeof(input_buffer));    // Clear the buffer
-                        input_index = 0;
-                    }
-                    else if((ch == KEY_BACKSPACE || ch == BACKSPACE) && input_index > 0)    // Handle backspace
-                    {
-                        input_buffer[--input_index] = '\0';
-                    }
-                    else if((ch >= LOWERBOUND && ch <= UPPERBOUND) && input_index < (int)sizeof(input_buffer) - 1)    // Ignore escape sequences or invalid input
-                    {
-                        input_buffer[input_index++] = (char)ch;
-                    }
-                }
-
-                pthread_mutex_lock(&message_mutex);
-                // Render messages in the chat box (read `messages[]`)
-                pthread_mutex_unlock(&message_mutex);
-
-                // Refresh the screen and continue updating dynamically
-                refresh();
-            }
-
             break;
 
         case SYS_ERROR:
@@ -423,6 +276,7 @@ int main(void)
                 nanosleep(&ts, NULL);
                 response_msg = read_from_socket(sockfd, buffer);
             }
+
             if(response_msg->packet_type == SYS_SUCCESS)
             {
                 LOG_MSG("Successfully created account\n");
@@ -444,12 +298,164 @@ int main(void)
                 }
                 break;
             }
+            if(response_msg->packet_type == SYS_ERROR)
+            {
+                LOG_ERROR("Error logging in.\n");
+                handle_sigint(logout_flag);
+            }
             LOG_ERROR("Account creation failed\n");
             break;
 
         default:
             LOG_ERROR("Unknown response from server: 0x%02X\n", response_msg->packet_type);
             break;
+    }
+
+    // --- Chat Loop ---
+    // Allow the user to type messages until they type "logout".
+
+    // printf("Enter message (or type 'logout' to exit): ");
+
+    initscr();
+    noecho();
+    cbreak();
+    nodelay(stdscr, TRUE);    // Enable non-blocking input
+    keypad(stdscr, TRUE);     // Allow special key input (like KEY_RESIZE)
+
+    memset(input_buffer, 0, sizeof(input_buffer));    // Initialize the input buffer
+    memset(messages, 0, sizeof(messages));
+
+    while(1)
+    {
+        int             ch;    // For non-blocking character input
+        struct Message  chat_msg;
+        struct CHT_Send chat;
+
+        if(logout_flag)
+        {
+            // Build and send logout message
+            struct Message logout_msg;
+            logout_msg.packet_type      = ACC_LOGOUT;
+            logout_msg.protocol_version = 3;
+            logout_msg.sender_id        = (uint16_t)client.uid;
+            logout_msg.payload_length   = 0;
+
+            LOG_MSG("Sending logout message due to SIGINT...\n");
+            write_to_socket(sockfd, &logout_msg, NULL, 0);
+
+            // Break out of loop to perform cleanup
+            break;
+        }
+
+        draw_boxes(&window_box, &chat_box, &text_box);
+
+        for(int i = 0; i < message_count; i++)
+        {
+            char formatted[BUFFER];
+            if(message_count > chat_box.max_y - 2)
+            {
+                // Remove the oldest message by shifting all messages up
+                for(int j = 0; j < message_count - 1; j++)
+                {
+                    strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
+                }
+                message_count--;    // Decrease the message count
+
+                if(i > 0)
+                {
+                    i--;    // Correctly adjust `i` for the outer loop
+                }
+            }
+
+            format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
+            // mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
+            mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
+            refresh();
+        }
+
+        // Display the input prompt in the text box
+        mvprintw(text_box.max_y - 2, text_box.min_x + 2, "Type here: %s", input_buffer);
+        curs_set(1);    // Enable cursor visibility
+
+        // Read input without blocking
+        ch = getch();
+        if(ch != ERR)    // Check if a key was pressed
+        {
+            if(ch == KEY_RESIZE)
+            {    // Handle resize events
+                LOG_MSG("Resize detected\n");
+
+                // Clear the screen
+                clear();
+
+                // Recalculate and redraw the boxes
+                memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
+                input_index = 0;
+                draw_boxes(&window_box, &chat_box, &text_box);
+
+                // Redraw existing messages
+                pthread_mutex_lock(&message_mutex);    // Lock mutex before accessing messages[]
+                for(int i = 0; i < message_count; i++)
+                {
+                    if(message_count > chat_box.max_y - 2)
+                    {
+                        // Adjust message count if overflow due to new dimensions
+                        for(int j = 0; j < message_count - 1; j++)
+                        {
+                            strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
+                        }
+                        message_count--;
+                        if(i > 0)
+                        {
+                            i--;    // Correctly adjust `i` for the outer loop
+                        }
+                    }
+
+                    mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);    // Reprint each message
+                }
+                pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
+
+                refresh();    // Refresh the screen
+            }
+
+            else if(ch == '\n')
+            {    // When the user presses Enter
+                if(message_count < MAX_MESSAGES)
+                {
+                    // strncpy(messages[message_count++], input_buffer, sizeof(input_buffer));
+                    LOG_MSG("User input received: %s\n", input_buffer);
+
+                    // Build and send chat message to the server
+
+                    chat_msg.packet_type      = CHT_SEND;
+                    chat_msg.protocol_version = 3;
+                    chat_msg.sender_id        = (uint16_t)client.uid;    // Replace with actual user ID
+
+                    chat.timestamp = time(NULL);
+                    chat.content   = input_buffer;
+                    chat.username  = client.username;
+
+                    send_chat_message(sockfd, &chat_msg, &chat);
+                }
+                memset(input_buffer, 0, sizeof(input_buffer));    // Clear the buffer
+                input_index = 0;
+            }
+            else if((ch == KEY_BACKSPACE || ch == BACKSPACE) && input_index > 0)    // Handle backspace
+            {
+                input_buffer[--input_index] = '\0';
+            }
+            else if((ch >= LOWERBOUND && ch <= UPPERBOUND) && input_index < (int)sizeof(input_buffer) - 1)    // Ignore escape sequences or invalid input
+            {
+                input_buffer[input_index++] = (char)ch;
+            }
+        }
+
+        pthread_mutex_lock(&message_mutex);
+        // Render messages in the chat box (read `messages[]`)
+        pthread_mutex_unlock(&message_mutex);
+
+        // Refresh the screen and continue updating dynamically
+        refresh();
     }
 
     LOG_MSG("Username: %s\n", client.username);
