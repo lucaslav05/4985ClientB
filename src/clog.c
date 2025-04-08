@@ -58,7 +58,7 @@ void log_msg(const char *func, const char *format, ...)
 
     // Format the time as a string
     strftime(time_buf, sizeof(time_buf), "%H:%M:%S", timeinfoptr);
-    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), ":%03ld", tv.tv_usec / DIVIDEND);
+    snprintf(time_buf + strlen(time_buf), sizeof(time_buf) - strlen(time_buf), ":%03ld", (long)(tv.tv_usec / DIVIDEND));
 
     va_start(args, format);
     vsnprintf(log_buf, sizeof(log_buf), format, args);    // NOLINT(clang-analyzer-valist.Uninitialized)
