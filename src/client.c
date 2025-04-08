@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 
 static volatile sig_atomic_t logout_flag   = 0;                            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 static int                   message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
