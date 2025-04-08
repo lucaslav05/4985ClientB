@@ -11,6 +11,7 @@
 #include "socket_setup.h"
 #include <arpa/inet.h>
 #include <curses.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -21,9 +22,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
-#include <limits.h>
-
+#ifdef __APPLE__
+    #include <math.h>
+    #include <stdio.h>
+#elif __linux__
+    #include <unistd.h>
+#endif
 static volatile sig_atomic_t logout_flag   = 0;                            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 static int                   message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 static char                  messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
