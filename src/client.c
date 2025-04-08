@@ -177,7 +177,7 @@ int main(void)
     int  input_index = 0;
     // int             message_count = 0;
     pthread_t recv_thread    = 0;
-    int       payload_offset = MAX_HEADER_SIZE;
+    int       payload_offset = 0;
 
 #if defined(__clang__)
     #pragma clang diagnostic push
@@ -237,6 +237,13 @@ int main(void)
     {
         case ACC_LOGIN_SUCCESS:
             LOG_MSG("Successfully logged in.\n");
+
+            LOG_MSG("Payload from offset %d:\n", payload_offset);
+            for(int i = 0; i < ENCODING_OVERHEAD; ++i)    // just using since its 20
+            {
+                LOG_MSG("%02X ", buffer[payload_offset + i]);
+            }
+            LOG_MSG("\n");
 
             if(buffer[payload_offset] == 0x02)
             {
