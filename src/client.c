@@ -144,7 +144,6 @@ static void *receive_messages(void *arg)
         else
         {
             LOG_ERROR("Error reading message from socket\n");
-            handle_sigint(logout_flag);
             break;
         }
     }
