@@ -241,7 +241,7 @@ int main(void)
             LOG_MSG("Payload from offset %d:\n", payload_offset);
             for(int i = 0; i < ENCODING_OVERHEAD; ++i)    // just using since its 20
             {
-                LOG_MSG("%02X ", buffer[payload_offset + i]);
+                LOG_MSG("%02X ", (uint16_t)buffer[payload_offset + i]);
             }
             LOG_MSG("\n");
 
