@@ -132,16 +132,6 @@ static void *receive_messages(void *arg)
         {
             pthread_mutex_lock(&message_mutex);
 
-            LOG_MSG("Received raw bytes: ");
-            for(int i = 0; i < (int)sizeof(payload_buffer); i++)
-            {
-                if(payload_buffer[i] != 0)    // Don't print trailing zeros (which may just pad)
-                {
-                    LOG_MSG("%02X ", payload_buffer[i]);
-                }
-            }
-            LOG_MSG("\n");
-
             // Add the payload to the messages array for display
             if(message_count < MAX_MESSAGES)
             {
@@ -238,13 +228,6 @@ int main(void)
     {
         case ACC_LOGIN_SUCCESS:
             LOG_MSG("Successfully logged in.\n");
-
-            LOG_MSG("Payload from offset %d:\n", payload_offset);
-            for(int i = 0; i < ENCODING_OVERHEAD; ++i)    // just using since its 20
-            {
-                LOG_MSG("%02X ", (uint16_t)buffer[payload_offset + i]);
-            }
-            LOG_MSG("\n");
 
             if(buffer[payload_offset] == 0x02)
             {
