@@ -1,1 +1,1 @@
-client src/client.c src/gui.c src/clog.c src/codec.c src/socket_setup.c src/account.c src/chat.c include/gui.h include/chat.h include/account.h include/clog.h include/message.h include/socket_setup.h include/codec.h ncurses curses m
+client src/client.c src/gui.c src/clog.c src/codec.c src/socket_setup.c src/account.c src/chat.c include/gui.h include/chat.h include/account.h include/clog.h include/message.h include/socket_setup.h include/codec.h ncurses curses
