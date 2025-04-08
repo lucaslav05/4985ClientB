@@ -210,7 +210,8 @@ int main(void)
     LOG_MSG("Prompting login...!\n");
     printf("Enter username: ");
     scanf("%49s", client.username);
-    strncpy(client.password, getpass("Enter password: "), MAX_SIZE);
+    printf("Enter password: ");
+    scanf("%49s", client.password);
 
     while(getchar() != '\n')
     {
