@@ -300,6 +300,7 @@ int main(void)
             }
             if(response_msg->packet_type == SYS_ERROR)
             {
+                endwin();
                 LOG_ERROR("Error logging in.\n");
                 handle_sigint(logout_flag);
             }
@@ -316,11 +317,14 @@ int main(void)
 
     // printf("Enter message (or type 'logout' to exit): ");
 
-    initscr();
-    noecho();
-    cbreak();
-    nodelay(stdscr, TRUE);    // Enable non-blocking input
-    keypad(stdscr, TRUE);     // Allow special key input (like KEY_RESIZE)
+    if(logout_flag == 0)
+    {
+        initscr();
+        noecho();
+        cbreak();
+        nodelay(stdscr, TRUE);    // Enable non-blocking input
+        keypad(stdscr, TRUE);     // Allow special key input (like KEY_RESIZE)
+    }
 
     memset(input_buffer, 0, sizeof(input_buffer));    // Initialize the input buffer
     memset(messages, 0, sizeof(messages));
