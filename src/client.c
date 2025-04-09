@@ -150,6 +150,7 @@ static void *receive_messages(void *arg)
         if(received_msg == NULL)
         {
             LOG_ERROR("Received null message, likely due to socket closure or error\n");
+            handle_sigint(logout_flag);
             break;
         }
 
