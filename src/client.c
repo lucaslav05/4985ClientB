@@ -22,10 +22,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#ifdef __APPLE__
-    #include <math.h>
-    #include <stdio.h>
-#elif __linux__
+
+#ifdef __linux__
     #include <unistd.h>
 #endif
 static volatile sig_atomic_t logout_flag   = 0;                            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
@@ -548,7 +546,11 @@ int main(void)
     }*/
 
     LOG_MSG("Cleaning up and exiting...\n");
-    pthread_join(recv_thread, NULL);
+
+    if(recv_thread)
+    {
+        pthread_join(recv_thread, NULL);
+    }
     pthread_mutex_destroy(&message_mutex);
     endwin();    // End `ncurses` mode
     close(sockfd);
