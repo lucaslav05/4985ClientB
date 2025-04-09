@@ -27,7 +27,7 @@
 // TLV for timestamp (GeneralizedTime), then TLV for content and TLV for username.
 void send_chat_message(int sockfd, struct Message *msg, const struct CHT_Send *chat)
 {
-    char      time_str[TIME_SIZE];    // "YYYYMMDDhhmmssZ" is 15 characters plus a null terminator
+    char      time_str[TIME_SIZE + 1];    // "YYYYMMDDhhmmssZ" is 15 characters plus a null terminator
     size_t    timestamp_len;
     size_t    content_len;
     size_t    username_len;

@@ -53,7 +53,7 @@ void format_message(const uint8_t *buffer, char *output, size_t out_size)
     uint8_t     username_len;
     char        content[CONTENT_SIZE];
     char        username[NAME_SIZE];
-    char        time_str[TIME_SIZE];
+    char        time_str[TIME_SIZE + 1];
     char        time_buf[TIME_BUFFER];    // Buffer to hold the formatted time string
     const char *format = NULL;
     struct tm   tm_info;
@@ -63,7 +63,7 @@ void format_message(const uint8_t *buffer, char *output, size_t out_size)
     // --- Process timestamp TLV ---
     pos++;
     ts_len = buffer[pos++];    // Read timestamp length
-    if(ts_len >= TIME_SIZE)
+    if(ts_len > TIME_SIZE)
     {
         LOG_ERROR("Timestamp length too long: %u\n", ts_len);
         return;
