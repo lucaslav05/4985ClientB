@@ -114,8 +114,14 @@ void format_message(const uint8_t *buffer, char *output, size_t out_size)
     content[content_len] = '\0';    // Null-terminate the content string
     pos += content_len;
 
+    if(content_len == 0 || strlen(content) == 0)
+    {
+        strcpy(content, "null");
+    }
+
+    pos++;
     // --- Process username TLV ---
-    pos++;                           // Skip username tag (expected tag: 0x0C)
+    // Skip username tag (expected tag: 0x0C)
     username_len = buffer[pos++];    // Read username length
     memcpy(username, &buffer[pos], username_len);
     username[username_len] = '\0';    // Null-terminate the username string
@@ -154,7 +160,14 @@ static void *receive_messages(void *arg)
             // Add the payload to the messages array for display
             if(message_count < MAX_MESSAGES)
             {
-                strncpy(messages[message_count++], (char *)payload_buffer, sizeof(payload_buffer));
+                if(received_msg->payload_length > 0 && received_msg->payload_length < BUFFER)
+                {
+                    strncpy(messages[message_count++], (char *)payload_buffer, sizeof(payload_buffer));
+                }
+                else
+                {
+                    LOG_ERROR("Received message too large: %d\n", received_msg->payload_length);
+                }
             }
 
             pthread_mutex_unlock(&message_mutex);
