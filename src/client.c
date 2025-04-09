@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <curses.h>
 #include <limits.h>
+#include <math.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <pthread.h>
@@ -39,6 +40,7 @@ void handle_sigint(int sig);
 
 void handle_sigint(int sig)
 {
+    (void)sig;
     logout_flag = 1;
 }
 
@@ -130,8 +132,22 @@ static void *receive_messages(void *arg)
 
     while(1)
     {
-        struct Message *received_msg = read_from_socket(sockfd, (char *)payload_buffer);
-        if(received_msg)
+        struct Message *received_msg;
+
+        if(logout_flag)
+        {
+            break;
+        }
+
+        received_msg = read_from_socket(sockfd, (char *)payload_buffer);
+
+        if(received_msg == NULL)
+        {
+            LOG_ERROR("Received null message, likely due to socket closure or error\n");
+            break;
+        }
+
+        if(received_msg->packet_type == CHT_SEND)
         {
             pthread_mutex_lock(&message_mutex);
 
@@ -150,6 +166,7 @@ static void *receive_messages(void *arg)
             break;
         }
     }
+
     return NULL;
 }
 
@@ -346,6 +363,7 @@ int main(void)
             LOG_MSG("Sending logout message due to SIGINT...\n");
             write_to_socket(sockfd, &logout_msg, NULL, 0);
 
+            shutdown(sockfd, SHUT_RDWR);
             // Break out of loop to perform cleanup
             break;
         }
@@ -368,6 +386,11 @@ int main(void)
                 {
                     i--;    // Correctly adjust `i` for the outer loop
                 }
+            }
+
+            if(logout_flag)
+            {
+                break;
             }
 
             format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
@@ -552,6 +575,8 @@ int main(void)
         pthread_join(recv_thread, NULL);
     }
     pthread_mutex_destroy(&message_mutex);
+    clear();
+    refresh();
     endwin();    // End `ncurses` mode
     close(sockfd);
     free(response_msg);
