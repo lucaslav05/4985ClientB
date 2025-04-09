@@ -28,6 +28,7 @@
     #include <unistd.h>
 #endif
 static volatile sig_atomic_t logout_flag   = 0;                            // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
+static volatile int new_message_flag = 0;  // NOLINT(cppcoreguidelines-avoid-non-const-global-variables)
 static int                   message_count = 0;                            // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 static char                  messages[MAX_MESSAGES][BUFFER];               // NOLINT cppcoreguidelines-avoid-non-const-global-variables
 static pthread_mutex_t       message_mutex = PTHREAD_MUTEX_INITIALIZER;    // NOLINT cppcoreguidelines-avoid-non-const-global-variables
@@ -171,6 +172,7 @@ static void *receive_messages(void *arg)
                 }
             }
 
+            new_message_flag = 1;
             pthread_mutex_unlock(&message_mutex);
             free(received_msg);    // Free the allocated memory for the message
         }
@@ -384,34 +386,38 @@ int main(void)
 
         draw_boxes(&window_box, &chat_box, &text_box);
 
-        for(int i = 0; i < message_count; i++)
+        if(new_message_flag)
         {
-            char formatted[BUFFER];
-            if(message_count > chat_box.max_y - 2)
+            for(int i = 0; i < message_count; i++)
             {
-                // Remove the oldest message by shifting all messages up
-                for(int j = 0; j < message_count - 1; j++)
+                char formatted[BUFFER];
+                if(message_count > chat_box.max_y - 2)
                 {
-                    strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
-                }
-                message_count--;    // Decrease the message count
+                    // Remove the oldest message by shifting all messages up
+                    for(int j = 0; j < message_count - 1; j++)
+                    {
+                        strncpy(messages[j], messages[j + 1], sizeof(messages[j]));
+                    }
+                    message_count--;    // Decrease the message count
 
-                if(i > 0)
+                    if(i > 0)
+                    {
+                        i--;    // Correctly adjust `i` for the outer loop
+                    }
+                }
+
+                if(logout_flag)
                 {
-                    i--;    // Correctly adjust `i` for the outer loop
+                    break;
                 }
-            }
 
-            if(logout_flag)
-            {
-                break;
+                format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
+                mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
+                doupdate();
             }
-
-            format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
-            // mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
-            mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
-            doupdate();
+            new_message_flag = 0; // Reset flag after updating the UI
         }
+
 
         // Display the input prompt in the text box
         mvprintw(text_box.max_y - 2, text_box.min_x + 2, "Type here: %s", input_buffer);
@@ -426,7 +432,7 @@ int main(void)
                 LOG_MSG("Resize detected\n");
 
                 // Clear the screen
-                clear();
+                wclear(stdscr);
 
                 // Recalculate and redraw the boxes
                 memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
@@ -489,10 +495,6 @@ int main(void)
                 input_buffer[input_index++] = (char)ch;
             }
         }
-
-        pthread_mutex_lock(&message_mutex);
-        // Render messages in the chat box (read `messages[]`)
-        pthread_mutex_unlock(&message_mutex);
 
         // Refresh the screen and continue updating dynamically
         doupdate();

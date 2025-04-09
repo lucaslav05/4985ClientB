@@ -77,7 +77,7 @@ int main(void)
             if(ch == KEY_RESIZE)    // Handle resize events
             {
                 LOG_MSG("Resize detected\n");
-                clear();
+                wclear(stdscr);
                 memset(input_buffer, 0, sizeof(input_buffer));    // Optional: Clear buffer on resize
                 input_index = 0;
                 draw_boxes(&window_box, &chat_box, &text_box);
@@ -103,7 +103,7 @@ int main(void)
         }
 
         // Refresh the screen and continue updating dynamically
-        refresh();
+        doupdate();
         nanosleep(&ts, NULL);    // Sleep to reduce CPU usage
     }
 }
