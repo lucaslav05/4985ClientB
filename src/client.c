@@ -410,7 +410,7 @@ int main(void)
             format_message((const uint8_t *)messages[i], formatted, sizeof(formatted));
             // mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", messages[i]);
             mvprintw(chat_box.min_y + 1 + i, chat_box.min_x + 2, "%s", formatted);
-            refresh();
+            doupdate();
         }
 
         // Display the input prompt in the text box
@@ -455,7 +455,7 @@ int main(void)
                 }
                 pthread_mutex_unlock(&message_mutex);    // Unlock mutex after accessing messages[]
 
-                refresh();    // Refresh the screen
+                doupdate();    // Refresh the screen
             }
 
             else if(ch == '\n')
@@ -495,7 +495,8 @@ int main(void)
         pthread_mutex_unlock(&message_mutex);
 
         // Refresh the screen and continue updating dynamically
-        refresh();
+        doupdate();
+        nanosleep(&ts, NULL);
     }
 
     LOG_MSG("Username: %s\n", client.username);

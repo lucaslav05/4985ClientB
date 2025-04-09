@@ -89,5 +89,5 @@ void draw_boxes(struct window *window_box, struct box *chat_box, struct box *tex
     draw_chat_box(window_box, chat_box);
     draw_text_box(window_box, text_box);
 
-    refresh();
+    doupdate();
 }
